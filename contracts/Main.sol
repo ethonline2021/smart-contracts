@@ -25,7 +25,7 @@ contract Main is Context, Ownable{
     // Logic
     // -----------------------------------------
     function deployAuthor(string memory name, string memory description) external {
-        Author author = new Author(name, description);
+        Author author = new Author(_msgSender(), name, description);
         emit AuthorDeployed(address(author), name, description);
     }
 }
