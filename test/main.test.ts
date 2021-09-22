@@ -3,6 +3,7 @@ import { Contract } from "@ethersproject/contracts";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Address } from "hardhat-deploy/dist/types";
 import { authorSignup, deployMain } from "./common";
+import { expect } from "chai";
 
 let main: Contract;
 
@@ -21,5 +22,6 @@ describe('Main', function () {
     const name = 'Mr.X';
     const description = 'Lorem ipsum dolor sit amet';
     const authorAddress: Address = await authorSignup(main, name, description);
+    expect(authorAddress).to.be.a.properAddress;
   });
 });
