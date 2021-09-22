@@ -1,9 +1,9 @@
 import { ethers } from "hardhat";
 import { expect } from 'chai';
-import { Contract, ContractFactory } from "@ethersproject/contracts";
+import { Contract } from "@ethersproject/contracts";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Address } from "hardhat-deploy/dist/types";
-import { authorSignup, deployMain } from "./common";
+import { authorSignup, createStream, deployMain } from "./common";
 import { BigNumber } from "ethers";
 
 let main: Contract;
@@ -40,9 +40,9 @@ describe('Author', function () {
   it('Should be able to create a new Stream', async function () {
     const title: string = "A Real Live One";
     const description: string = "Yooo this is a test";
-    const entryToken: Address = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
+    const entryToken: Address = ethers.utils.getAddress("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48");
     const entryAmount: BigNumber = BigNumber.from(23);
-    expect(await authorContract.createStream(title, description, entryToken, entryAmount))
-      .to.emit(authorContract,"StreamDeployed");
+    const streamAddress: Address = await createStream(authorContract, title, description, entryToken, entryAmount);
+    expect(streamAddress).to.be.a.properAddress;
   });
 });
