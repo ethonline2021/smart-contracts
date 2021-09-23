@@ -3,14 +3,14 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
-import "./Author.sol";
+import "./User.sol";
 
 contract Main is Context, Ownable {
     // -----------------------------------------
     // Events
     // -----------------------------------------
-    event AuthorDeployed(
-        address authorAddress,
+    event UserDeployed(
+        address userAddress,
         string name,
         string description
     );
@@ -27,10 +27,10 @@ contract Main is Context, Ownable {
     // -----------------------------------------
     // Logic
     // -----------------------------------------
-    function deployAuthor(string memory name, string memory description)
+    function deployUser(string memory name, string memory description)
         external
     {
-        Author author = new Author(_msgSender(), name, description);
-        emit AuthorDeployed(address(author), name, description);
+        User user = new User(_msgSender(), name, description);
+        emit UserDeployed(address(user), name, description);
     }
 }

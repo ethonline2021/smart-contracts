@@ -2,19 +2,18 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/Context.sol";
-import "./Stream.sol";
 
-contract Author is Context {
+contract User is Context {
     // -----------------------------------------
     // Events
     // -----------------------------------------
-    event AuthorCreated(
-        address author,
+    event UserCreated(
+        address user,
         address creator,
         string name,
         string description
     );
-    event AuthorUpdated(string name, string description);
+    event UserUpdated(string name, string description);
     event StreamDeployed(
         address streamAddress,
         string title,
@@ -40,13 +39,13 @@ contract Author is Context {
     ) {
         require(
             address(creator) != address(0),
-            "Author: Creator Address can't be 0x"
+            "User: Creator Address can't be 0x"
         );
         _creator = creator;
         _name = name;
         _description = description;
 
-        emit AuthorCreated(address(this), creator, name, description);
+        emit UserCreated(address(this), creator, name, description);
     }
 
     // -----------------------------------------
@@ -58,36 +57,14 @@ contract Author is Context {
     {
         _name = name;
         _description = description;
-        emit AuthorUpdated(name, description);
-    }
-
-    function createStream(
-        string memory title,
-        string memory description,
-        address entryToken,
-        uint256 entryAmount
-    ) external onlyCreator {
-        Stream stream = new Stream(
-            _creator,
-            title,
-            description,
-            entryToken,
-            entryAmount
-        );
-        emit StreamDeployed(
-            address(stream),
-            title,
-            description,
-            entryToken,
-            entryAmount
-        );
+        emit UserUpdated(name, description);
     }
 
     // -----------------------------------------
     // Modifiers
     // -----------------------------------------
     modifier onlyCreator() {
-        require(_msgSender() == _creator, "Author: Not the creator");
+        require(_msgSender() == _creator, "User: Not the creator");
         _;
     }
 }
