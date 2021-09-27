@@ -22,3 +22,18 @@ export const userSignup = async (contract: Contract, name: string, description: 
 
     return receipt.args.userAddress;
 }
+
+export const createItem = async (contract: Contract, title: string, description: string, price: BigNumber, token: Address, amount: number, endPaymentDate: number): Promise<Address> => {
+    let tx = await contract.deployItem(title, description, price, token, amount, endPaymentDate);
+    let receipt = await tx.wait();
+    receipt = receipt.events?.filter((x: any) => {return x.event == "ItemDeployed"})[0];
+    expect(receipt.args.itemAddress).to.be.properAddress;
+    expect(receipt.args.title).to.be.equal(title);
+    expect(receipt.args.description).to.be.equal(description);
+    expect(receipt.args.price).to.be.equal(price);
+    expect(receipt.args.token).to.be.equal(token);
+    expect(receipt.args.amount).to.be.equal(amount);
+    expect(receipt.args.endPaymentDate).to.be.equal(endPaymentDate);
+
+    return receipt.args.itemAddress;
+}

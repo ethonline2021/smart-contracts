@@ -19,8 +19,8 @@ describe('Main', function () {
   });
  
   it('Should signup a user', async function () {
-    const name = 'Mr.X';
-    const description = 'Lorem ipsum dolor sit amet';
+    const name: string = 'Mr.X';
+    const description: string = 'Lorem ipsum dolor sit amet';
     const deployedUserAddress: Address = await userSignup(main, name, description);
     expect(deployedUserAddress).to.be.a.properAddress;
 
