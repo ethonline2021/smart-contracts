@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { Contract } from "@ethersproject/contracts";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Address } from "hardhat-deploy/dist/types";
-import { userSignup, deployMain, createItem } from "./common";
+import { userSignup, deployMain, createItem, deployErc20 } from "./common";
 import { BigNumber } from "ethers";
 
 let main: Contract;
@@ -20,16 +20,9 @@ describe('User', function () {
   beforeEach(async function () {
     [owner, alice, bob, ...addrs] = await ethers.getSigners();
     main = await deployMain();
+    erc20Contract = await deployErc20('DummyErc20', 'DUM', ethers.utils.parseEther("10000"));
 
-    // Deploy a dummy ERC20 token to be used later
-    let contractFactory = await ethers.getContractFactory('Erc20');
-    erc20Contract = await contractFactory.deploy('DummyErc20', 'DUM', ethers.utils.parseEther("10000"));
-    expect(erc20Contract.address).to.be.properAddress;
-    expect(await erc20Contract.name()).to.be.equal('DummyErc20');
-
-    const name: string = 'Mr.X';
-    const description: string = 'Lorem ipsum dolor sit amet';
-    const userAddress: Address = await userSignup(main, name, description);
+    const userAddress: Address = await userSignup(main, 'Mr.X', 'Lorem ipsum dolor sit amet');
     userContract = await ethers.getContractAt("User", userAddress);
   });
  
@@ -43,7 +36,7 @@ describe('User', function () {
             .to.emit(userContract, "UserUpdated")
             .withArgs(newName, newDescription);
 
-    let userDetails = await userContract.getDetails();
+    const userDetails = await userContract.getDetails();
     expect(userDetails[0]).to.be.equal(owner.address);
     expect(userDetails[1]).to.be.equal(newName);
     expect(userDetails[2]).to.be.equal(newDescription);
@@ -55,9 +48,11 @@ describe('User', function () {
     const price: BigNumber = BigNumber.from(42);
     const token: Address = erc20Contract.address;
     const amount: number = 666;
-    const endPaymentDate: number = Date.now();
+    const today = new Date();
+    const endPaymentDate = new Date(today.getFullYear(), today.getMonth()+3, today.getDate()).getDate();
+    const uri: string = 'https://game.example/api/item/{id}.json';
 
-    const itemAddress: Address = await createItem(userContract, title, description, price, token, amount, endPaymentDate);
+    const itemAddress: Address = await createItem(userContract, title, description, price, token, amount, endPaymentDate, uri);
     expect(itemAddress).to.be.a.properAddress;
   });
 });

@@ -23,8 +23,17 @@ export const userSignup = async (contract: Contract, name: string, description: 
     return receipt.args.userAddress;
 }
 
-export const createItem = async (contract: Contract, title: string, description: string, price: BigNumber, token: Address, amount: number, endPaymentDate: number): Promise<Address> => {
-    let tx = await contract.deployItem(title, description, price, token, amount, endPaymentDate);
+export const deployErc20 = async (name: string, symbol: string, initialSupply: BigNumber): Promise<Contract> => {
+    let contractFactory = await ethers.getContractFactory('Erc20');
+    let erc20Contract = await contractFactory.deploy(name, symbol, initialSupply);
+    expect(await erc20Contract.name()).to.be.equal(name);
+    expect(await erc20Contract.symbol()).to.be.equal(symbol);
+    expect(erc20Contract.address).to.be.properAddress;
+    return erc20Contract;
+}
+
+export const createItem = async (contract: Contract, title: string, description: string, price: BigNumber, token: Address, amount: number, endPaymentDate: number, uri: string): Promise<Address> => {
+    let tx = await contract.deployItem(title, description, price, token, amount, endPaymentDate, uri);
     let receipt = await tx.wait();
     receipt = receipt.events?.filter((x: any) => {return x.event == "ItemDeployed"})[0];
     expect(receipt.args.itemAddress).to.be.properAddress;
@@ -34,6 +43,7 @@ export const createItem = async (contract: Contract, title: string, description:
     expect(receipt.args.token).to.be.equal(token);
     expect(receipt.args.amount).to.be.equal(amount);
     expect(receipt.args.endPaymentDate).to.be.equal(endPaymentDate);
+    expect(receipt.args.uri).to.be.equal(uri);
 
     return receipt.args.itemAddress;
 }

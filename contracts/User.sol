@@ -25,7 +25,8 @@ contract User is Context {
         uint256 price,
         address token,
         uint256 amount,
-        uint256 endPaymentDate
+        uint256 endPaymentDate,
+        string uri
     );
 
     // -----------------------------------------
@@ -73,7 +74,7 @@ contract User is Context {
         emit UserUpdated(name, description);
     }
 
-    function deployItem(string memory title, string memory description, uint256 price, address token, uint256 amount, uint256 endPaymentDate)
+    function deployItem(string memory title, string memory description, uint256 price, address token, uint256 amount, uint256 endPaymentDate, string memory uri)
         external
         onlyOwner
     {
@@ -82,9 +83,9 @@ contract User is Context {
         require(amount > 0, "User: Amount must be > 0");
         require(endPaymentDate > 0, "User: EndPaymentDate must be > 0");
 
-        Item item = new Item(_owner, title, description, price, token, amount, endPaymentDate);
+        Item item = new Item(_owner, title, description, price, token, amount, endPaymentDate, uri);
         _deployedItems.add(address(item));
-        emit ItemDeployed(address(item), title, description, price, token, amount, endPaymentDate);
+        emit ItemDeployed(address(item), title, description, price, token, amount, endPaymentDate, uri);
     }
 
     // -----------------------------------------

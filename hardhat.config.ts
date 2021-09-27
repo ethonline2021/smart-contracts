@@ -7,7 +7,6 @@ import 'solidity-coverage';
 import { Wallet } from 'ethers';
 import '@openzeppelin/hardhat-upgrades';
 
-
 const mnemonic = process.env.MNEMONIC;
 let accounts;
 
@@ -30,7 +29,15 @@ if (mnemonic) {
  * @type import('hardhat/config').HardhatUserConfig
  */
 module.exports = {
-  solidity: "0.8.4",
+  solidity: {
+    version: "0.8.4",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200,
+      },
+    },
+  },
   networks: {
     hardhat: {
       initialBaseFeePerGas: 0, // workaround from https://github.com/sc-forks/solidity-coverage/issues/652#issuecomment-896330136 . Remove when that issue is closed.
