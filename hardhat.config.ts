@@ -39,6 +39,10 @@ module.exports = {
       },
       accounts: accounts,
     },
+    mumbai: {
+      url: 'https://polygon-mumbai.g.alchemy.com/v2/' + process.env.ALCHEMY_TOKEN,
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : "remote",
+    },
   },
   gasReporter: {
     enabled: process.env.REPORT_GAS !== undefined,
