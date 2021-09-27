@@ -41,10 +41,12 @@ contract Item is Context {
         uint256 amount, 
         uint256 endPaymentDate
     ) {
-        require(
-            address(owner) != address(0),
-            "Item: Owner Address can't be 0x"
-        );
+        require(address(owner) != address(0), "Item: Owner Address can't be 0x");
+        require(price > 0, "User: Price must be > 0");
+        require(address(token) != address(0), "User: Token Address can't be 0x");
+        require(amount > 0, "User: Amount must be > 0");
+        require(endPaymentDate > 0, "User: EndPaymentDate must be > 0");
+
         _owner = owner;
         _title = title;
         _description = description;

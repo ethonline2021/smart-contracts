@@ -44,10 +44,7 @@ contract User is Context {
         string memory name,
         string memory description
     ) {
-        require(
-            address(owner) != address(0),
-            "User: Owner Address can't be 0x"
-        );
+        require(address(owner) != address(0), "User: Owner Address can't be 0x");
         _owner = owner;
         _name = name;
         _description = description;
@@ -80,6 +77,11 @@ contract User is Context {
         external
         onlyOwner
     {
+        require(price > 0, "User: Price must be > 0");
+        require(address(token) != address(0), "User: Token Address can't be 0x");
+        require(amount > 0, "User: Amount must be > 0");
+        require(endPaymentDate > 0, "User: EndPaymentDate must be > 0");
+
         Item item = new Item(_owner, title, description, price, token, amount, endPaymentDate);
         _deployedItems.add(address(item));
         emit ItemDeployed(address(item), title, description, price, token, amount, endPaymentDate);
