@@ -18,6 +18,7 @@ contract Main is Context, Ownable {
     // -----------------------------------------
     // Storage
     // -----------------------------------------
+    mapping (address => address) public deployedUsers;  // user address => deployed user contract address
 
     // -----------------------------------------
     // Constructor
@@ -31,6 +32,11 @@ contract Main is Context, Ownable {
         external
     {
         User user = new User(_msgSender(), name, description);
+        deployedUsers[_msgSender()] = address(user);
         emit UserDeployed(address(user), name, description);
+    }
+
+    function getDeployedUser(address user) public view returns(address){
+        return deployedUsers[user];
     }
 }

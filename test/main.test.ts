@@ -21,7 +21,10 @@ describe('Main', function () {
   it('Should signup a user', async function () {
     const name = 'Mr.X';
     const description = 'Lorem ipsum dolor sit amet';
-    const userAddress: Address = await userSignup(main, name, description);
-    expect(userAddress).to.be.a.properAddress;
+    const deployedUserAddress: Address = await userSignup(main, name, description);
+    expect(deployedUserAddress).to.be.a.properAddress;
+
+    expect(await main.getDeployedUser(owner.address)).to.be.equal(deployedUserAddress);
+    expect(await main.getDeployedUser(alice.address)).to.be.equal('0x0000000000000000000000000000000000000000');
   });
 });
