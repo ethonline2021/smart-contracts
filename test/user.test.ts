@@ -34,7 +34,7 @@ describe('User', function () {
 
     await expect(userContract.update(newName, newDescription))
             .to.emit(userContract, "UserUpdated")
-            .withArgs(newName, newDescription);
+            .withArgs(userContract.address, newName, newDescription);
 
     const userDetails = await userContract.getDetails();
     expect(userDetails[0]).to.be.equal(owner.address);

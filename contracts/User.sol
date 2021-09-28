@@ -12,14 +12,15 @@ contract User is Context {
     // Events
     // -----------------------------------------
     event UserCreated(
-        address user,
+        address contractAddress,
         address owner,
         string name,
         string description
     );
-    event UserUpdated(string name, string description);
+    event UserUpdated(address contractAddress, string name, string description);
     event ItemDeployed(
         address itemAddress,
+        address owner,
         string title,
         string description,
         uint256 price,
@@ -71,7 +72,7 @@ contract User is Context {
     {
         _name = name;
         _description = description;
-        emit UserUpdated(name, description);
+        emit UserUpdated(address(this), name, description);
     }
 
     function deployItem(string memory title, string memory description, uint256 price, address token, uint256 amount, uint256 endPaymentDate, string memory uri)
@@ -85,7 +86,7 @@ contract User is Context {
 
         Item item = new Item(_owner, title, description, price, token, amount, endPaymentDate, uri);
         _deployedItems.add(address(item));
-        emit ItemDeployed(address(item), title, description, price, token, amount, endPaymentDate, uri);
+        emit ItemDeployed(address(item), address(_owner), title, description, price, token, amount, endPaymentDate, uri);
     }
 
     // -----------------------------------------

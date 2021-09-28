@@ -10,7 +10,8 @@ contract Main is Context, Ownable {
     // Events
     // -----------------------------------------
     event UserDeployed(
-        address userAddress,
+        address contractAddress,
+        address owner,
         string name,
         string description
     );
@@ -32,7 +33,7 @@ contract Main is Context, Ownable {
     {
         User user = new User(_msgSender(), name, description);
         deployedUsers[_msgSender()] = address(user);
-        emit UserDeployed(address(user), name, description);
+        emit UserDeployed(address(user), _msgSender(), name, description);
     }
 
     function getDeployedUser(address user) public view returns(address){

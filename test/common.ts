@@ -16,11 +16,11 @@ export const userSignup = async (contract: Contract, name: string, description: 
     let tx = await contract.deployUser(name, description);
     let receipt = await tx.wait();
     receipt = receipt.events?.filter((x: any) => {return x.event == "UserDeployed"})[0];
-    expect(receipt.args.userAddress).to.be.properAddress;
+    expect(receipt.args.contractAddress).to.be.properAddress;
     expect(receipt.args.name).to.be.equal(name);
     expect(receipt.args.description).to.be.equal(description);
 
-    return receipt.args.userAddress;
+    return receipt.args.contractAddress;
 }
 
 export const deployErc20 = async (name: string, symbol: string, initialSupply: BigNumber): Promise<Contract> => {
