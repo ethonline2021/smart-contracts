@@ -3,10 +3,11 @@ import { Contract, ContractFactory } from '@ethersproject/contracts';
 import { expect } from 'chai';
 import { Address } from "hardhat-deploy/dist/types";
 import { BigNumber } from "ethers";
+import { exit } from "process";
 
-export const deployMain = async(): Promise<Contract> => {
+export const deployMain = async(sfHost: string, sfCfa: string, sfResolver: string, sfVersion: string): Promise<Contract> => {
     const mainFactory: ContractFactory = await ethers.getContractFactory("Main");
-    const main: Contract = await mainFactory.deploy();
+    const main: Contract = await mainFactory.deploy(sfHost, sfCfa, sfResolver, sfVersion);
     expect(main.address).to.be.properAddress;
 
     return main;
@@ -35,12 +36,14 @@ export const deployErc20 = async (name: string, symbol: string, initialSupply: B
 export const createItem = async (contract: Contract, title: string, description: string, price: BigNumber, token: Address, amount: number, endPaymentDate: number, uri: string): Promise<Address> => {
     let tx = await contract.deployItem(title, description, price, token, amount, endPaymentDate, uri);
     let receipt = await tx.wait();
+
     receipt = receipt.events?.filter((x: any) => {return x.event == "ItemDeployed"})[0];
     expect(receipt.args.itemAddress).to.be.properAddress;
     expect(receipt.args.title).to.be.equal(title);
     expect(receipt.args.description).to.be.equal(description);
     expect(receipt.args.price).to.be.equal(price);
     expect(receipt.args.token).to.be.equal(token);
+    expect(receipt.args.token).to.be.a.properAddress;
     expect(receipt.args.amount).to.be.equal(amount);
     expect(receipt.args.endPaymentDate).to.be.equal(endPaymentDate);
     expect(receipt.args.uri).to.be.equal(uri);

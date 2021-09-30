@@ -16,10 +16,16 @@ let owner: SignerWithAddress,
 
 let erc20Contract: Contract;
 
+// SuperFluid config
+const sfHost: Address = process.env.SUPERFLUID_HOST || '';
+const sfCfa: Address = process.env.SUPERFLUID_CFA || '';
+const sfResolver: Address = process.env.SUPERFLUID_RESOLVER || '';
+const sfVersion: string = process.env.SUPERFLUID_VERSION || '';
+
 describe('User', function () {
   beforeEach(async function () {
     [owner, alice, bob, ...addrs] = await ethers.getSigners();
-    main = await deployMain();
+    main = await deployMain(sfHost, sfCfa, sfResolver, sfVersion);
     erc20Contract = await deployErc20('DummyErc20', 'DUM', ethers.utils.parseEther("10000"));
 
     const userAddress: Address = await userSignup(main, 'Mr.X', 'Lorem ipsum dolor sit amet');

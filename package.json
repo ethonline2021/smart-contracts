@@ -45,11 +45,15 @@
     "solhint": "^3.3.6",
     "solidity-coverage": "^0.7.17",
     "ts-node": "^10.2.1",
-    "typescript": "^4.4.3"
+    "typescript": "^4.4.3",
+    "@superfluid-finance/ethereum-contracts": "^1.0.0-dev.a00bbc8.0"
   },
   "husky": {
     "hooks": {
-       "pre-push": "npm run prettier:solidity"
+      "pre-push": "npm run prettier:solidity"
     }
+  },
+  "dependencies": {
+    "@superfluid-finance/js-sdk": "^0.5.4"
   }
 }

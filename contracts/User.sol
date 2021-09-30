@@ -3,6 +3,8 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+
+import "./Main.sol";
 import "./Item.sol";
 
 contract User is Context {
@@ -34,6 +36,7 @@ contract User is Context {
     // Storage
     // -----------------------------------------
     address private _owner;
+    Main private _main;
     string private _name;
     string private _description;
     EnumerableSet.AddressSet private _deployedItems;
@@ -47,6 +50,7 @@ contract User is Context {
         string memory description
     ) {
         require(address(owner) != address(0), "User: Owner Address can't be 0x");
+        _main = Main(_msgSender());
         _owner = owner;
         _name = name;
         _description = description;
@@ -79,14 +83,12 @@ contract User is Context {
         external
         onlyOwner
     {
-        require(price > 0, "User: Price must be > 0");
-        require(address(token) != address(0), "User: Token Address can't be 0x");
-        require(amount > 0, "User: Amount must be > 0");
-        require(endPaymentDate > 0, "User: EndPaymentDate must be > 0");
+        Item item = _main.deployItem(_owner, title, description, price, token, amount, endPaymentDate, uri);
 
-        Item item = new Item(_owner, title, description, price, token, amount, endPaymentDate, uri);
         _deployedItems.add(address(item));
-        emit ItemDeployed(address(item), address(_owner), title, description, price, token, amount, endPaymentDate, uri);
+
+        (,string memory _title, string memory _itemDescription, uint256 _price, address _acceptedToken, uint256 _amount, uint256 _endPaymentDate, string memory _uri) = item.getDetails();
+        emit ItemDeployed(address(item), address(_owner), _title, _itemDescription, _price, _acceptedToken, _amount, _endPaymentDate, _uri);
     }
 
     // -----------------------------------------

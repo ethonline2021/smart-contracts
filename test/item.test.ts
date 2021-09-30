@@ -1,10 +1,13 @@
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
 import { expect } from 'chai';
 import { Contract } from "@ethersproject/contracts";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Address } from "hardhat-deploy/dist/types";
 import { userSignup, deployMain, createItem, deployErc20 } from "./common";
 import { BigNumber } from "ethers";
+import { exit } from "process";
+
+const SuperfluidSDK = require("@superfluid-finance/js-sdk");
 
 let main: Contract;
 let userContract: Contract;
@@ -17,10 +20,52 @@ let owner: SignerWithAddress,
 let erc20Contract: Contract,
     itemContract: Contract;
 
+// SuperFluid config
+const sfHost: Address = process.env.SUPERFLUID_HOST || '';
+const sfCfa: Address = process.env.SUPERFLUID_CFA || '';
+const sfResolver: Address = process.env.SUPERFLUID_RESOLVER || '';
+const sfVersion: string = process.env.SUPERFLUID_VERSION || '';
+let sf;
+let daiContract: Contract,
+    daixContract: Contract;
+
 describe('Item', function () {
-  beforeEach(async function () {
+  before(async function () {
     [owner, alice, bob, ...addrs] = await ethers.getSigners();
-    main = await deployMain();
+
+    console.log('\r\n\r\n=====Deploying SF Protocol=====\r\n');
+    const tokenSymbol = "fDAI";
+    sf = new SuperfluidSDK.Framework({
+      ethers: ethers.provider,
+      tokens: ["fDAI"],
+    });
+    await sf.initialize();
+    
+    const {
+        ISuperToken,
+        TestToken,
+    } = sf.contracts;
+
+    const daiAddress = await sf.resolver.get(`tokens.${tokenSymbol}`);
+    const daixAddress = await sf.resolver.get(`supertokens.${sfVersion}.${tokenSymbol}x`);
+    daiContract = await TestToken.at(daiAddress);
+    daixContract = await ISuperToken.at(daixAddress);
+    console.log('\r\n===============================\r\n\r\n');
+
+    // Setting some tokens and supertokens to the user
+    const deposit = ethers.utils.parseEther("20000");
+    await daiContract.mint(owner.address, deposit);
+    expect(deposit).to.be.equal(await daiContract.balanceOf(owner.address));
+
+    await expect(await daiContract.approve(daixContract.address, deposit.div(2))).to.emit(daiContract, "Approval");
+    await expect(await daixContract.upgrade(deposit.div(2))).to.emit(daixContract, "TokenUpgraded");
+    
+    expect(await daiContract.balanceOf(owner.address)).to.be.equal(deposit.div(2));
+    expect(await daixContract.balanceOf(owner.address)).to.be.equal(deposit.div(2));    
+  });
+
+  beforeEach(async function () {
+    main = await deployMain(sfHost, sfCfa, sfResolver, sfVersion);
     erc20Contract = await deployErc20('DummyErc20', 'DUM', ethers.utils.parseEther("10000"));
 
     const userAddress: Address = await userSignup(main, 'Mr.X', 'Lorem ipsum dolor sit amet');
@@ -28,18 +73,14 @@ describe('Item', function () {
 
     const today = new Date();
     const endPaymentDate = new Date(today.getFullYear(), today.getMonth()+3, today.getDate()).getDate();
-    const itemAddress: Address = await createItem(userContract, 'Thy Title', 'Desc', BigNumber.from(42), erc20Contract.address, 666, endPaymentDate, 'https://a.com/api/{id}.json');
+    const itemAddress = await createItem(userContract, 'Thy Title', 'Desc', BigNumber.from(42), daixContract.address, 10, endPaymentDate, 'https://a.com/api/{id}.json');
     itemContract = await ethers.getContractAt("Item", itemAddress);
   });
  
   it('Should be able to update and retrieve the details', async function () {
     const title: string = 'Ethereum after The Merge';
     const description: string = 'While Layer 2 is taking off on Ethereum, topics like cross-chain transactions and fast withdrawals are top of mind. At the same time, Ethereum is planning for its largest release to date with the merge with the beacon chain.';
-    const price: BigNumber = BigNumber.from(12);
-    const token: Address = erc20Contract.address;
-    const today = new Date();
-    const endPaymentDate = new Date(today.getFullYear(), today.getMonth()+4, today.getDate()).getDate();
-    const uri: string = 'https://e.io/api/{id}.json';
+    const price: BigNumber = BigNumber.from(12);    
 
     // Check the actual values are not the new ones ...
     let itemDetails = await itemContract.getDetails();
@@ -47,23 +88,25 @@ describe('Item', function () {
     expect(itemDetails[1]).to.not.be.equal(title);
     expect(itemDetails[3]).to.not.be.equal(price);
 
-    await expect(itemContract.update(title, description, price, token, endPaymentDate, uri))
+    await expect(itemContract.update(title, description))
         .to.emit(itemContract, "ItemUpdated")
-        .withArgs(itemContract.address, owner.address, title, description, price, token, endPaymentDate, uri);
+        .withArgs(itemContract.address, owner.address, title, description);
 
     itemDetails = await itemContract.getDetails();
     expect(itemDetails[0]).to.be.equal(owner.address);
     expect(itemDetails[1]).to.be.equal(title);
     expect(itemDetails[2]).to.be.equal(description);
-    expect(itemDetails[3]).to.be.equal(price);
-    expect(itemDetails[4]).to.be.equal(token);
-    expect(itemDetails[6]).to.be.equal(endPaymentDate);
-    expect(itemDetails[7]).to.be.equal(uri);
 
-    expect(await itemContract.uri(1)).to.be.equal(uri);
     expect(await itemContract.balanceOf(itemContract.address,1)).to.be.equal(1);
-    expect(await itemContract.balanceOf(itemContract.address,245)).to.be.equal(1);
-    expect(await itemContract.balanceOf(itemContract.address,666)).to.be.equal(1);
-    expect(await itemContract.balanceOf(itemContract.address,667)).to.be.equal(0);
+    expect(await itemContract.balanceOf(itemContract.address,5)).to.be.equal(1);
+    expect(await itemContract.balanceOf(itemContract.address,10)).to.be.equal(1);
+    expect(await itemContract.balanceOf(itemContract.address,11)).to.be.equal(0);
+  });
+
+  it('Should be able to buy an item', async function () {
+    const amount: number = 1;
+    await expect(await itemContract.buy(1))
+      .to.emit(itemContract,"ItemBought")
+      .withArgs(itemContract.address, amount);
   });
 });
