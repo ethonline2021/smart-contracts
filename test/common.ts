@@ -1,9 +1,8 @@
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
 import { Contract, ContractFactory } from '@ethersproject/contracts';
 import { expect } from 'chai';
 import { Address } from "hardhat-deploy/dist/types";
 import { BigNumber } from "ethers";
-import { exit } from "process";
 
 export const deployMain = async(sfHost: string, sfCfa: string, sfResolver: string, sfVersion: string): Promise<Contract> => {
     const mainFactory: ContractFactory = await ethers.getContractFactory("Main");
@@ -50,3 +49,12 @@ export const createItem = async (contract: Contract, title: string, description:
 
     return receipt.args.itemAddress;
 }
+
+export const timeTravel = async (time: number) => {
+    const startBlock = await ethers.provider.getBlock(await ethers.provider.getBlockNumber());
+    await network.provider.send("evm_increaseTime", [time]);
+    await network.provider.send("evm_mine");
+    const endBlock = await ethers.provider.getBlock(await ethers.provider.getBlockNumber());
+
+    console.log(`\tTime Travelled ${time} (sec) => FROM ${startBlock.timestamp} TO ${endBlock.timestamp}`);
+};  

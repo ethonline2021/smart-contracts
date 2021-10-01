@@ -52,7 +52,7 @@ describe('User', function () {
     const title: string = 'Ethereum after The Merge';
     const description: string = 'While Layer 2 is taking off on Ethereum, topics like cross-chain transactions and fast withdrawals are top of mind. At the same time, Ethereum is planning for its largest release to date with the merge with the beacon chain.';
     const price: BigNumber = BigNumber.from(42);
-    const token: Address = erc20Contract.address;
+    const token: Address = "0x5D8B4C2554aeB7e86F387B4d6c00Ac33499Ed01f"; // Hardcoding DAIX supertoken...
     const amount: number = 666;
     const today = new Date();
     const endPaymentDate = new Date(today.getFullYear(), today.getMonth()+3, today.getDate()).getDate();

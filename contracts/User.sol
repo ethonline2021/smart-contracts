@@ -83,7 +83,7 @@ contract User is Context {
         external
         onlyOwner
     {
-        Item item = _main.deployItem(_owner, title, description, price, token, amount, endPaymentDate, uri);
+        Item item = Item(_main.deployItem(_owner, title, description, price, token, amount, endPaymentDate, uri));
 
         _deployedItems.add(address(item));
 

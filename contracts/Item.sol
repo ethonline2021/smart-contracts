@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/token/ERC1155/presets/ERC1155PresetMinterPauser.sol";
 import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import { SuperAppBase } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperAppBase.sol";
 import {
@@ -21,6 +22,7 @@ import "hardhat/console.sol";
 
 contract Item is Context, ERC1155PresetMinterPauser, ERC1155Holder, Simple777Recipient, SuperAppBase {
     using EnumerableSet for EnumerableSet.AddressSet;
+    using EnumerableSet for EnumerableSet.Bytes32Set;
 
     // -----------------------------------------
     // Events
@@ -68,14 +70,17 @@ contract Item is Context, ERC1155PresetMinterPauser, ERC1155Holder, Simple777Rec
     ISuperfluid private _sfHost; // host
     IConstantFlowAgreementV1 private _sfCfa; // the stored constant flow agreement class address
 
-    mapping (address => int96) private _buyingUsers;  // user address => buying items
     EnumerableSet.AddressSet private _buyingUsersSet; 
+    mapping (address => bytes32) private _buyingUsers; // user => agreementId
+    EnumerableSet.Bytes32Set private _agreementsSet; 
+    mapping (bytes32 => address) private _agreementsUsers; // agreementId => user
+    
 
     // -----------------------------------------
     // Errors
     // -----------------------------------------
 
-    string private constant _ERR_STR_LOW_FLOW_RATE = "Superfluid: Flow rate too low";
+    string private constant _ERR_STR_LOW_FLOW_RATE = "Item: Flow rate too low";
 
     // -----------------------------------------
     // Constructor
@@ -121,7 +126,7 @@ contract Item is Context, ERC1155PresetMinterPauser, ERC1155Holder, Simple777Rec
         (_sfHost,_sfCfa,,) = _main.superfluidConfig();
 
         // TODO: This fixed the rate at price paid in 1 month. Ideally, we should use endPaymentDate to adjust this.
-        _MINIMUM_FLOW_RATE = (int96(int(price)) * 1e18) / (3600 * 24 * 30);
+        _MINIMUM_FLOW_RATE = int96(int(price)) / (3600 * 24 * 30);
 
         emit ItemCreated(address(this), _owner, _title, _description, _price, address(_acceptedToken), _amount, _endPaymentDate, _uri);
     }
@@ -162,99 +167,50 @@ contract Item is Context, ERC1155PresetMinterPauser, ERC1155Holder, Simple777Rec
         emit ItemUpdated(address(this), _owner, title, description);
     }
 
-    function buy(uint256 amount)
+    function endPurchase() 
         public
     {
-        require(amount > 0, "Item: Amount must be > 0");
-
-        int96 flowRate = _MINIMUM_FLOW_RATE * int96(int(amount));
-        _openFlow(_msgSender(), flowRate);
-
-        emit ItemBought(address(this), _msgSender(), amount);
+        
+        // _buyingUsersSet.remove(context.msgSender);
     }
- 
+
     // -----------------------------------------
     // Superfluid Flows Logic
     // -----------------------------------------
 
-    function _openFlow(address sender, int96 flowRate)
-        private
-        returns (bytes memory newCtx)
+    function _beforeBuy(bytes calldata ctx) 
+        private view
+        returns (bytes memory cbdata)
     {
-        require(flowRate > 0, _ERR_STR_LOW_FLOW_RATE);
-
-        newCtx = _sfHost.callAgreement(
-            _sfCfa,
-            abi.encodeWithSelector(
-                _sfCfa.createFlow.selector,
-                _acceptedToken,
-                sender,
-                address(this),
-                flowRate,
-                new bytes(0) // placeholder
-            ),
-            new bytes(0)
-        );
-    }
-
-    function _updateFlow(int96 flowRate)
-        private
-        returns (bytes memory newCtx)
-    {
-        require(flowRate > 0, _ERR_STR_LOW_FLOW_RATE);
-
-        newCtx = _sfHost.callAgreement(
-            _sfCfa,
-            abi.encodeWithSelector(
-                _sfCfa.updateFlow.selector,
-                _acceptedToken,
-                address(this),
-                flowRate,
-                new bytes(0) // placeholder
-            ),
-            new bytes(0)
-        );
+        ISuperfluid.Context memory context = _sfHost.decodeCtx(ctx);
+        require(!_buyingUsersSet.contains(context.msgSender), "Item: User already buying an Item");
+        cbdata = abi.encode(context.msgSender);
     }
 
     function _startBuyStream(
         bytes calldata ctx,
-        address agreementClass,
+        address /*agreementClass*/,
         bytes32 agreementId,
-        bytes calldata cbdata
+        bytes calldata /*cbdata*/
     ) private returns (bytes memory newCtx) {
         ISuperfluid.Context memory context = _sfHost.decodeCtx(ctx); // userData
-
-        if(_buyingUsersSet.contains(context.msgSender)) {
-            (, int96 flowRate, , ) = IConstantFlowAgreementV1(agreementClass).getFlowByID(_acceptedToken, agreementId);
-            newCtx = _updateFlow(flowRate+_MINIMUM_FLOW_RATE);
-            _buyingUsers[context.msgSender] = _buyingUsers[context.msgSender]+1;
-        }else{
-            _buyingUsers[context.msgSender] = 1;
-        }
-
         _buyingUsersSet.add(context.msgSender);
+        _buyingUsers[context.msgSender] = agreementId;
+        _agreementsSet.add(agreementId);
+        _agreementsUsers[agreementId] = context.msgSender;
+        return ctx;
     }
 
-    function _updateBuyStream(
-        bytes calldata ctx,
-        address agreementClass,
-        bytes32 agreementId,
-        bytes calldata cbdata
-    ) private returns (bytes memory newCtx) {
-        ISuperfluid.Context memory context = _sfHost.decodeCtx(ctx); // userData
-        (, int96 flowRate, , ) = IConstantFlowAgreementV1(agreementClass).getFlowByID(_acceptedToken, agreementId);
-
-        int96 minFlow = _buyingUsers[context.msgSender]*_MINIMUM_FLOW_RATE;
-
-        require(flowRate >= minFlow, _ERR_STR_LOW_FLOW_RATE);
-        newCtx = _updateFlow(flowRate);
-    }
-
-    function _terminateBuyStream(bytes calldata ctx) private returns (bytes memory newCtx) {
+    // TODO: move code to endPurchase()!!!!!
+    function _terminateBuyStream(bytes32 agreementId, bytes memory ctx) private returns (bytes memory newCtx) {
         ISuperfluid.Context memory context = _sfHost.decodeCtx(ctx); // userData
         
+        (uint256 timestamp, int96 flowRate, , ) = _sfCfa.getFlowByID(_acceptedToken, agreementId);
+
+
         // Check the amount paid
 
+        // If paid enough, claim.
 
         // Send NFT accordingly
         // uint256[] memory ids = [];
@@ -263,13 +219,30 @@ contract Item is Context, ERC1155PresetMinterPauser, ERC1155Holder, Simple777Rec
 
         // Return the exceeding amount to the user. ?.
 
-        _buyingUsers[context.msgSender] = 0;
+
+        // _sfCfa.deleteFlow(_acceptedToken, _msgSender(), address(this), ctx);
+
         _buyingUsersSet.remove(context.msgSender);
+        _buyingUsers[context.msgSender] = 0;
+        _agreementsSet.remove(agreementId);
+        _agreementsUsers[agreementId] = address(0);
+
+        return ctx;
     }
 
     // -----------------------------------------
     // Superfluid SuperApp Callbacks
     // -----------------------------------------
+
+    function beforeAgreementCreated(
+        ISuperToken superToken,
+        address agreementClass,
+        bytes32 /*agreementId*/,
+        bytes calldata, /*agreementData*/
+        bytes calldata ctx
+    ) external view override onlyHost onlyExpected(superToken, agreementClass) returns (bytes memory cbdata) {
+        cbdata = _beforeBuy(ctx);
+    }
 
     function afterAgreementCreated(
         ISuperToken, /* superToken */
@@ -279,18 +252,10 @@ contract Item is Context, ERC1155PresetMinterPauser, ERC1155Holder, Simple777Rec
         bytes calldata cbdata,
         bytes calldata ctx
     ) external override onlyHost returns (bytes memory newCtx) {
-        return _startBuyStream(ctx, agreementClass, agreementId, cbdata);
-    }
+        (, int96 flowRate, , ) = IConstantFlowAgreementV1(agreementClass).getFlowByID(_acceptedToken, agreementId);
+        require(flowRate >= _MINIMUM_FLOW_RATE, _ERR_STR_LOW_FLOW_RATE);
 
-    function afterAgreementUpdated(
-        ISuperToken, /* superToken */
-        address agreementClass,
-        bytes32 agreementId,
-        bytes calldata, /*agreementData*/
-        bytes calldata cbdata,
-        bytes calldata ctx
-    ) external override onlyHost returns (bytes memory newCtx) {
-        return _updateBuyStream(ctx, agreementClass, agreementId, cbdata);
+        return _startBuyStream(ctx, agreementClass, agreementId, cbdata);
     }
 
     function beforeAgreementTerminated(
@@ -308,7 +273,7 @@ contract Item is Context, ERC1155PresetMinterPauser, ERC1155Holder, Simple777Rec
     function afterAgreementTerminated(
         ISuperToken, /* superToken */
         address, /* agreementClass */
-        bytes32, /* agreementId */
+        bytes32 agreementId,
         bytes calldata, /*agreementData*/
         bytes calldata cbdata,
         bytes calldata ctx
@@ -316,8 +281,12 @@ contract Item is Context, ERC1155PresetMinterPauser, ERC1155Holder, Simple777Rec
         // According to the app basic law, we should never revert in a termination callback
         bool shouldIgnore = abi.decode(cbdata, (bool));
         if (shouldIgnore) return ctx;
-        return _terminateBuyStream(ctx);
+        return _terminateBuyStream(agreementId, ctx);
     }
+
+    // -----------------------------------------
+    // Other
+    // -----------------------------------------
 
     function _isSameToken(ISuperToken superToken) private view returns (bool) {
         return address(superToken) == address(_acceptedToken);
