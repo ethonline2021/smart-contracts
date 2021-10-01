@@ -12,6 +12,7 @@ import { ERC20WithTokenInfo } from "@superfluid-finance/ethereum-contracts/contr
 
 import "./User.sol";
 import "./Item.sol";
+import "./ItemFactory.sol";
 
 contract Main is Context, Ownable {
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -29,6 +30,7 @@ contract Main is Context, Ownable {
     // -----------------------------------------
     // Storage
     // -----------------------------------------
+    ItemFactory private _itemFactory;
     ISuperfluid private _sfHost; // host
     IConstantFlowAgreementV1 private _sfCfa; // the stored constant flow agreement class address
     IResolver private _sfResolver;
@@ -43,11 +45,11 @@ contract Main is Context, Ownable {
     // -----------------------------------------
     // Constructor
     // -----------------------------------------
-    constructor(address sfHost, address sfCfa, address sfResolver, string memory sfVersion){
+    constructor(address itemFactory, address sfHost, address sfCfa, address sfResolver, string memory sfVersion){
         require(address(sfHost) != address(0), "Main: Host Address can't be 0x");
         require(address(sfCfa) != address(0), "Main: CFA Address can't be 0x");
         require(address(sfResolver) != address(0), "Main: Resolver Address can't be 0x");
-
+        _itemFactory = ItemFactory(itemFactory);
         _sfHost = ISuperfluid(sfHost);
         _sfCfa = IConstantFlowAgreementV1(sfCfa);
         _sfResolver = IResolver(sfResolver);
@@ -76,13 +78,7 @@ contract Main is Context, Ownable {
         onlyDeployedUsers
         returns (Item)
     {
-        require(price > 0, "Main: Price must be > 0");
-        require(address(token) != address(0), "Main: Token Address can't be 0x");
-        require(amount > 0, "Main: Amount must be > 0");
-        require(endPaymentDate > 0, "Main: EndPaymentDate must be > 0");
-
-        Item item = new Item(address(this), owner, title, description, price, token, amount, endPaymentDate, uri);
-
+        Item item = _itemFactory.deployItem(address(this), owner, title, description, price, token, amount, endPaymentDate, uri);
         _registerSuperApp(address(item));
 
         return (item);

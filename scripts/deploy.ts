@@ -1,6 +1,6 @@
 import { ethers } from "hardhat";
 
-async function main(contractName: string, constructorArgs: any[], finalOwner: string) {
+async function deploy(contractName: string, constructorArgs: any[], finalOwner: string): Promise<string> {
   const [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
 
   console.log("Deploying contracts with the account:", owner.address);
@@ -14,11 +14,21 @@ async function main(contractName: string, constructorArgs: any[], finalOwner: st
   
   console.log(`${contractName} deployed to:`, deployed.address);
   
-  await deployed.transferOwnership(finalOwner);
-  console.log("Ownership transfered to:", finalOwner);
+  if(finalOwner != '') {
+    await deployed.transferOwnership(finalOwner);
+    console.log("Ownership transfered to:", finalOwner);
+  } 
+
+  return deployed.address;
 }
 
-main("Main", [], "0xdF83f67321635C8c2Df962C0FB2ab9C8c92dBaB1")
+const sfHost = process.env.SUPERFLUID_HOST || '';
+const sfCfa = process.env.SUPERFLUID_CFA || '';
+const sfResolver = process.env.SUPERFLUID_RESOLVER || '';
+const sfVersion = process.env.SUPERFLUID_VERSION || '';
+
+deploy('ItemFactory',[],'')
+  .then((itemFactoryAddr) => deploy("Main", [itemFactoryAddr, sfHost, sfCfa, sfResolver, sfVersion], "0xdF83f67321635C8c2Df962C0FB2ab9C8c92dBaB1"))
   .then(() => process.exit(0))
   .catch((error) => {
     console.error(error);

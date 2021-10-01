@@ -2,7 +2,7 @@ import { ethers } from "hardhat";
 import { Contract } from "@ethersproject/contracts";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Address } from "hardhat-deploy/dist/types";
-import { userSignup, deployMain, deployErc20 } from "./common";
+import { userSignup, deployMain, deployErc20, deployItemFactory } from "./common";
 import { expect } from "chai";
 import { BigNumber } from "ethers";
 
@@ -13,7 +13,8 @@ let owner: SignerWithAddress,
     bob: SignerWithAddress,
     addrs: SignerWithAddress[];
 
-let erc20Contract: Contract;
+let erc20Contract: Contract,
+    itemFactory: Contract;
 
 // SuperFluid config
 const sfHost: Address = process.env.SUPERFLUID_HOST || '';
@@ -24,7 +25,8 @@ const sfVersion: string = process.env.SUPERFLUID_VERSION || '';
 describe('Main', function () {
   beforeEach(async function () {
     [owner, alice, bob, ...addrs] = await ethers.getSigners();
-    main = await deployMain(sfHost, sfCfa, sfResolver, sfVersion);
+    itemFactory = await deployItemFactory();
+    main = await deployMain(itemFactory.address, sfHost, sfCfa, sfResolver, sfVersion);
     erc20Contract = await deployErc20('DummyErc20', 'DUM', ethers.utils.parseEther("10000"));
   });
  

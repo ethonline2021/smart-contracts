@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { Contract } from "@ethersproject/contracts";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Address } from "hardhat-deploy/dist/types";
-import { userSignup, deployMain, createItem, deployErc20, timeTravel } from "./common";
+import { userSignup, deployMain, createItem, deployErc20, timeTravel, deployItemFactory } from "./common";
 import { BigNumber } from "ethers";
 
 const SuperfluidSDK = require("@superfluid-finance/js-sdk");
@@ -17,7 +17,8 @@ let owner: SignerWithAddress,
     addrs: SignerWithAddress[];
 
 let erc20Contract: Contract,
-    itemContract: Contract;
+    itemContract: Contract,
+    itemFactory: Contract;
 
 // SuperFluid config
 const sfHost: Address = process.env.SUPERFLUID_HOST || '';
@@ -70,7 +71,8 @@ describe('Item', function () {
   });
 
   beforeEach(async function () {
-    main = await deployMain(sfHost, sfCfa, sfResolver, sfVersion);
+    itemFactory = await deployItemFactory();
+    main = await deployMain(itemFactory.address, sfHost, sfCfa, sfResolver, sfVersion);
     erc20Contract = await deployErc20('DummyErc20', 'DUM', ethers.utils.parseEther("10000"));
 
     const userAddress: Address = await userSignup(main, 'Mr.X', 'Lorem ipsum dolor sit amet');
@@ -112,28 +114,27 @@ describe('Item', function () {
     let itemDetails = await itemContract.getDetails();
     const price = itemDetails[3];
 
-    // const minFlowRate = price.div(3600 * 24 * 30);
+    const minFlowRate = price.div(3600 * 24 * 30);
 
-    // const userBob = sf.user({
-    //   address: bob.address, 
-    //   token: daixContract.address
-    // });
+    const userBob = sf.user({
+      address: bob.address, 
+      token: daixContract.address
+    });
 
-    // await userBob.flow({
-    //   recipient: itemContract.address,
-    //   flowRate: minFlowRate
-    // });
+    await userBob.flow({
+      recipient: alice.address,
+      flowRate: "385802469135802"
+    });
+
+    await userBob.flow({
+      recipient: alice.address,
+      flowRate: "0"
+    });
 
     // await timeTravel(3600*24*30); // ONE MONTH LATER ... 🐙
 
     // console.log('list:', await userBob.details());
     
     // expect(await daixContract.balanceOf(itemContract.address)).to.be.closeTo(price, +ethers.utils.parseEther("0.0001").toString());
-
-    // THIS SHOULD WORK:
-    // await userBob.flow({
-    //   recipient: itemContract.address,
-    //   flowRate: "0"
-    // });
   });
 });

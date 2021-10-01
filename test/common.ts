@@ -4,9 +4,17 @@ import { expect } from 'chai';
 import { Address } from "hardhat-deploy/dist/types";
 import { BigNumber } from "ethers";
 
-export const deployMain = async(sfHost: string, sfCfa: string, sfResolver: string, sfVersion: string): Promise<Contract> => {
+export const deployItemFactory = async(): Promise<Contract> => {
+    const itemFactoryF: ContractFactory = await ethers.getContractFactory("ItemFactory");
+    const itemFactory: Contract = await itemFactoryF.deploy();
+    expect(itemFactory.address).to.be.properAddress;
+
+    return itemFactory;
+}
+
+export const deployMain = async(itemfactory: Address, sfHost: string, sfCfa: string, sfResolver: string, sfVersion: string): Promise<Contract> => {
     const mainFactory: ContractFactory = await ethers.getContractFactory("Main");
-    const main: Contract = await mainFactory.deploy(sfHost, sfCfa, sfResolver, sfVersion);
+    const main: Contract = await mainFactory.deploy(itemfactory, sfHost, sfCfa, sfResolver, sfVersion);
     expect(main.address).to.be.properAddress;
 
     return main;
