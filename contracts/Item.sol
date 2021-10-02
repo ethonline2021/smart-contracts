@@ -20,7 +20,7 @@ import "./utils/Simple777Recipient.sol";
 
 import "hardhat/console.sol";
 
-contract Item is Context, ERC1155PresetMinterPauser, ERC1155Holder, Simple777Recipient, SuperAppBase {
+contract Item is Context, ERC1155PresetMinterPauser, Simple777Recipient, SuperAppBase {
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using EnumerableSet for EnumerableSet.UintSet;
@@ -86,12 +86,6 @@ contract Item is Context, ERC1155PresetMinterPauser, ERC1155Holder, Simple777Rec
     
     mapping (bytes32 => AgreementData) private _agreementsUsers; // agreementId => timestamp
     EnumerableSet.UintSet private _availableNftIds; 
-
-    // -----------------------------------------
-    // Errors
-    // -----------------------------------------
-
-    string private constant _ERR_STR_LOW_FLOW_RATE = "Item: Flow rate too low";
 
     // -----------------------------------------
     // Constructor
@@ -280,7 +274,7 @@ contract Item is Context, ERC1155PresetMinterPauser, ERC1155Holder, Simple777Rec
         bytes calldata ctx
     ) external override onlyHost returns (bytes memory newCtx) {
         (,int96 flowRate,,) = IConstantFlowAgreementV1(agreementClass).getFlowByID(_acceptedToken, agreementId);
-        require(flowRate >= _MINIMUM_FLOW_RATE, _ERR_STR_LOW_FLOW_RATE);
+        require(flowRate >= _MINIMUM_FLOW_RATE, "Item: Flow rate too low");
         return _startPurchase(ctx, agreementClass, agreementId, cbdata);
     }
 
@@ -328,7 +322,7 @@ contract Item is Context, ERC1155PresetMinterPauser, ERC1155Holder, Simple777Rec
         public
         view
         virtual
-        override(ERC1155PresetMinterPauser, ERC1155Receiver)
+        override(ERC1155PresetMinterPauser)
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
