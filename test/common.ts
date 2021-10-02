@@ -65,4 +65,4 @@ export const timeTravel = async (time: number) => {
     const endBlock = await ethers.provider.getBlock(await ethers.provider.getBlockNumber());
 
     console.log(`\tTime Travelled ${time} (sec) => FROM ${startBlock.timestamp} TO ${endBlock.timestamp}`);
-};  
+}
