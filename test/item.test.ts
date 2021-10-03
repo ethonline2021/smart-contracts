@@ -84,31 +84,31 @@ describe('Item', function () {
     itemContract = await ethers.getContractAt("Item", itemAddress);
   });
  
-  // it('Should be able to update and retrieve the details', async function () {
-  //   const title: string = 'Ethereum after The Merge';
-  //   const description: string = 'While Layer 2 is taking off on Ethereum, topics like cross-chain transactions and fast withdrawals are top of mind. At the same time, Ethereum is planning for its largest release to date with the merge with the beacon chain.';
-  //   const price: BigNumber = BigNumber.from(12);    
+  it('Should be able to update and retrieve the details', async function () {
+    const title: string = 'Ethereum after The Merge';
+    const description: string = 'While Layer 2 is taking off on Ethereum, topics like cross-chain transactions and fast withdrawals are top of mind. At the same time, Ethereum is planning for its largest release to date with the merge with the beacon chain.';
+    const price: BigNumber = BigNumber.from(12);    
 
-  //   // Check the actual values are not the new ones ...
-  //   let itemDetails = await itemContract.getDetails();
-  //   expect(itemDetails[0]).to.be.equal(owner.address);
-  //   expect(itemDetails[1]).to.not.be.equal(title);
-  //   expect(itemDetails[3]).to.not.be.equal(price);
+    // Check the actual values are not the new ones ...
+    let itemDetails = await itemContract.getDetails();
+    expect(itemDetails[0]).to.be.equal(owner.address);
+    expect(itemDetails[1]).to.not.be.equal(title);
+    expect(itemDetails[3]).to.not.be.equal(price);
 
-  //   await expect(itemContract.update(title, description))
-  //       .to.emit(itemContract, "ItemUpdated")
-  //       .withArgs(itemContract.address, owner.address, title, description);
+    await expect(itemContract.update(title, description))
+        .to.emit(itemContract, "ItemUpdated")
+        .withArgs(owner.address, title, description);
 
-  //   itemDetails = await itemContract.getDetails();
-  //   expect(itemDetails[0]).to.be.equal(owner.address);
-  //   expect(itemDetails[1]).to.be.equal(title);
-  //   expect(itemDetails[2]).to.be.equal(description);
+    itemDetails = await itemContract.getDetails();
+    expect(itemDetails[0]).to.be.equal(owner.address);
+    expect(itemDetails[1]).to.be.equal(title);
+    expect(itemDetails[2]).to.be.equal(description);
 
-  //   expect(await itemContract.balanceOf(itemContract.address,1)).to.be.equal(1);
-  //   expect(await itemContract.balanceOf(itemContract.address,5)).to.be.equal(1);
-  //   expect(await itemContract.balanceOf(itemContract.address,10)).to.be.equal(1);
-  //   expect(await itemContract.balanceOf(itemContract.address,11)).to.be.equal(0);
-  // });
+    expect(await itemContract.balanceOf(itemContract.address,1)).to.be.equal(1);
+    expect(await itemContract.balanceOf(itemContract.address,5)).to.be.equal(1);
+    expect(await itemContract.balanceOf(itemContract.address,10)).to.be.equal(1);
+    expect(await itemContract.balanceOf(itemContract.address,11)).to.be.equal(0);
+  });
 
   it('Should be able to start buying items', async function () {
     let itemDetails = await itemContract.getDetails();
@@ -155,13 +155,17 @@ describe('Item', function () {
 
     // Should be paid (aprox.) after one month
     expect(await daixContract.balanceOf(itemContract.address)).to.be.closeTo(price, +ethers.utils.parseEther("0.0001").toString());
-
+    
     let tx = await itemContract.claim();
     let receipt = await tx.wait();
     receipt = receipt.events?.filter((x: any) => {return x.event == "FinishedPurchasing"})[0];
     expect(receipt.args.buyer).to.be.equal(owner.address);
 
     expect(await itemContract.balanceOf(owner.address, receipt.args.nftId)).to.be.equal(1);
+
+    flow = await sf.agreements.cfa.getFlow(daixContract.address, owner.address, itemContract.address);
+    expect(flow.timestamp).to.be.equal(BigNumber.from(0));
+    expect(flow.flowRate).to.be.equal(BigNumber.from(0));
   });
 
   it('Should be able to close the flow and receive items bought', async function () {

@@ -176,11 +176,25 @@ contract Item is Context, ERC1155PresetMinterPauser, Simple777Recipient, SuperAp
     function claim() 
         public
     {
-        require(_hasPaidEnough(_msgSender()), "Item: Not paid enough");
+        address user = _msgSender();
+
+        require(_hasPaidEnough(user), "Item: Not paid enough");
         require(_availableNftIds.length() > 0, "Item: No items available");
 
         // Close the CFA
-        _sfCfa.deleteFlow(_acceptedToken, _msgSender(), address(this), new bytes(0)); // Will trigger afterAgreementTerminated
+        _sfHost.callAgreement(
+            _sfCfa,
+            abi.encodeWithSelector(
+                _sfCfa.deleteFlow.selector,
+                _acceptedToken,
+                user,
+                address(this),
+                new bytes(0) // placeholder
+            ),
+            "0x"
+        );
+
+        _finishPurchase(_buyingUsers[user], user);
     }
 
     function _hasPaidEnough(address user) internal view returns (bool){
@@ -227,10 +241,8 @@ contract Item is Context, ERC1155PresetMinterPauser, Simple777Recipient, SuperAp
         return ctx;
     }
 
-    function _finishPurchase(bytes32 agreementId, bytes memory ctx) private returns (bytes memory newCtx) {
-        ISuperfluid.Context memory context = _sfHost.decodeCtx(ctx); // userData
-
-        require(_hasPaidEnough(context.msgSender), "Item: Not enough paid");
+    function _finishPurchase(bytes32 agreementId, address user) private {
+        require(_hasPaidEnough(user), "Item: Not enough paid");
         
         address nftRecipient = _agreementsUsers[agreementId].userAddress;
         _buyingUsersSet.remove(_msgSender());
@@ -247,8 +259,6 @@ contract Item is Context, ERC1155PresetMinterPauser, Simple777Recipient, SuperAp
         // TODO: Pay back the sent-price? Dangerous, relying on block.timestamp
 
         emit FinishedPurchasing(_msgSender(), id);
-        
-        return ctx;
     }
 
     // -----------------------------------------
@@ -301,7 +311,12 @@ contract Item is Context, ERC1155PresetMinterPauser, Simple777Recipient, SuperAp
         // According to the app basic law, we should never revert in a termination callback
         bool shouldIgnore = abi.decode(cbdata, (bool));
         if (shouldIgnore) return ctx;
-        return _finishPurchase(agreementId, ctx);
+
+        ISuperfluid.Context memory context = _sfHost.decodeCtx(ctx); // userData
+        
+        _finishPurchase(agreementId, context.msgSender);
+
+        return ctx;
     }
 
     // -----------------------------------------
