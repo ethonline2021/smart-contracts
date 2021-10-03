@@ -173,12 +173,10 @@ contract Item is Context, ERC1155PresetMinterPauser, Simple777Recipient, SuperAp
         emit ItemUpdated(_owner, title, description);
     }
 
-    function claim() 
+    function claim(address userAddress) 
         public
     {
-        address user = _msgSender();
-
-        require(_hasPaidEnough(user), "Item: Not paid enough");
+        require(_hasPaidEnough(userAddress), "Item: Not paid enough");
         require(_availableNftIds.length() > 0, "Item: No items available");
 
         // Close the CFA
@@ -187,19 +185,19 @@ contract Item is Context, ERC1155PresetMinterPauser, Simple777Recipient, SuperAp
             abi.encodeWithSelector(
                 _sfCfa.deleteFlow.selector,
                 _acceptedToken,
-                user,
+                userAddress,
                 address(this),
                 new bytes(0) // placeholder
             ),
             "0x"
         );
 
-        _finishPurchase(_buyingUsers[user], user);
+        _finishPurchase(_buyingUsers[userAddress]);
     }
 
-    function _hasPaidEnough(address user) internal view returns (bool){
-        require(_buyingUsersSet.contains(user), "Item: Not buying user");
-        return (totalPaid(user) >= _price);
+    function _hasPaidEnough(address userAddress) internal view returns (bool){
+        require(_buyingUsersSet.contains(userAddress), "Item: Not buying user");
+        return (totalPaid(userAddress) >= _price);
     }
 
     function totalPaid(address user)
@@ -241,12 +239,13 @@ contract Item is Context, ERC1155PresetMinterPauser, Simple777Recipient, SuperAp
         return ctx;
     }
 
-    function _finishPurchase(bytes32 agreementId, address user) private {
-        require(_hasPaidEnough(user), "Item: Not enough paid");
-        
-        address nftRecipient = _agreementsUsers[agreementId].userAddress;
-        _buyingUsersSet.remove(_msgSender());
-        _buyingUsers[_msgSender()] = 0;
+    function _finishPurchase(bytes32 agreementId) private {
+        address userAddress = _agreementsUsers[agreementId].userAddress;
+
+        require(_hasPaidEnough(userAddress), "Item: Not enough paid");
+
+        _buyingUsersSet.remove(userAddress);
+        _buyingUsers[userAddress] = 0;
         _agreementsSet.remove(agreementId);
         _agreementsUsers[agreementId] = AgreementData(address(0), 0, 0);
 
@@ -254,11 +253,11 @@ contract Item is Context, ERC1155PresetMinterPauser, Simple777Recipient, SuperAp
         uint256 id = _availableNftIds.at(0);
         _availableNftIds.remove(id);
 
-        _safeTransferFrom(address(this), nftRecipient, id, 1, "");
+        _safeTransferFrom(address(this), userAddress, id, 1, "");
 
         // TODO: Pay back the sent-price? Dangerous, relying on block.timestamp
 
-        emit FinishedPurchasing(_msgSender(), id);
+        emit FinishedPurchasing(userAddress, id);
     }
 
     // -----------------------------------------
@@ -311,10 +310,8 @@ contract Item is Context, ERC1155PresetMinterPauser, Simple777Recipient, SuperAp
         // According to the app basic law, we should never revert in a termination callback
         bool shouldIgnore = abi.decode(cbdata, (bool));
         if (shouldIgnore) return ctx;
-
-        ISuperfluid.Context memory context = _sfHost.decodeCtx(ctx); // userData
         
-        _finishPurchase(agreementId, context.msgSender);
+        _finishPurchase(agreementId);
 
         return ctx;
     }

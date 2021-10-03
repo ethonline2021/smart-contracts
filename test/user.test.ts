@@ -53,9 +53,9 @@ describe('User', function () {
   it('Should be able to deploy a new Item', async function () {
     const title: string = 'Ethereum after The Merge';
     const description: string = 'While Layer 2 is taking off on Ethereum, topics like cross-chain transactions and fast withdrawals are top of mind. At the same time, Ethereum is planning for its largest release to date with the merge with the beacon chain.';
-    const price: BigNumber = BigNumber.from(42);
+    const price: BigNumber = ethers.utils.parseEther("42");
     const token: Address = "0x5D8B4C2554aeB7e86F387B4d6c00Ac33499Ed01f"; // Hardcoding DAIX supertoken...
-    const amount: number = 666;
+    const amount: number = 100;
     const today = new Date();
     const endPaymentDate = new Date(today.getFullYear(), today.getMonth()+3, today.getDate()).getDate();
     const uri: string = 'https://game.example/api/item/{id}.json';

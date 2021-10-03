@@ -123,7 +123,7 @@ describe('Item', function () {
 
     await timeTravel(3600*24*1); // ONE DAY LATER ... 🐙
 
-    await expect(itemContract.claim()).to.be.revertedWith("Item: Not paid enough");
+    await expect(itemContract.claim(owner.address)).to.be.revertedWith("Item: Not paid enough");
 
     await timeTravel(3600*24*29); // 29 DAYS LATER ... 🐙
 
@@ -156,7 +156,7 @@ describe('Item', function () {
     // Should be paid (aprox.) after one month
     expect(await daixContract.balanceOf(itemContract.address)).to.be.closeTo(price, +ethers.utils.parseEther("0.0001").toString());
     
-    let tx = await itemContract.claim();
+    let tx = await itemContract.claim(owner.address);
     let receipt = await tx.wait();
     receipt = receipt.events?.filter((x: any) => {return x.event == "FinishedPurchasing"})[0];
     expect(receipt.args.buyer).to.be.equal(owner.address);
