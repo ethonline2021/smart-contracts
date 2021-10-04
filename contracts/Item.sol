@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/Context.sol";
-import "@openzeppelin/contracts/token/ERC1155/presets/ERC1155PresetMinterPauser.sol";
+import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
@@ -18,9 +18,7 @@ import {
 import "./Main.sol";
 import "./utils/Simple777Recipient.sol";
 
-import "hardhat/console.sol";
-
-contract Item is Context, ERC1155PresetMinterPauser, Simple777Recipient, SuperAppBase {
+contract Item is Context, ERC1155, Simple777Recipient, SuperAppBase {
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using EnumerableSet for EnumerableSet.UintSet;
@@ -58,26 +56,32 @@ contract Item is Context, ERC1155PresetMinterPauser, Simple777Recipient, SuperAp
         uint256 nftId
     );
 
-    // -----------------------------------------
-    // Storage
-    // -----------------------------------------
-    Main private _main;
-    address private _owner;
-    string private _title;
-    string private _description;
-    uint256 private _price;
-    ISuperToken private _acceptedToken;
-    uint256 private _amount;
-    uint256 private _endPaymentDate;
-    string private _uri;
+    event WithdrawnEth(address indexed recipient, uint256 amount);
 
-    int96 private _MINIMUM_FLOW_RATE;
+    // Structs
+    struct Data {
+        string title;
+        string description;
+        uint256 price;
+        ISuperToken acceptedToken;
+        uint256 amount;
+        uint256 endPaymentDate;
+        string uri;
+        int96 miminumFlowRate;
+    }
 
     struct AgreementData {
         address userAddress;
         int96 flowRate;
         uint256 timestamp;
     }
+
+    // -----------------------------------------
+    // Storage
+    // -----------------------------------------
+    Main private _main;
+    address private _owner;
+    Data private _itemData;
 
     ISuperfluid private _sfHost; // host
     IConstantFlowAgreementV1 private _sfCfa; // the stored constant flow agreement class address
@@ -104,7 +108,7 @@ contract Item is Context, ERC1155PresetMinterPauser, Simple777Recipient, SuperAp
         uint256 endPaymentDate,
         string memory uri
     ) 
-        ERC1155PresetMinterPauser(uri) 
+        ERC1155(uri) 
         Simple777Recipient(address(token))
     {
         require(address(owner) != address(0), "Item: Owner Address can't be 0x");
@@ -114,18 +118,23 @@ contract Item is Context, ERC1155PresetMinterPauser, Simple777Recipient, SuperAp
         require(endPaymentDate > 0, "Item: EndPaymentDate must be > 0");
 
         _main = Main(main);
+        _owner = owner;
 
         ERC20WithTokenInfo acceptedToken = ERC20WithTokenInfo(address(token));
         require(_main.isSuperToken(acceptedToken),"Item: SuperToken required");
 
-        _owner = owner;
-        _title = title;
-        _description = description;
-        _price = price;
-        _acceptedToken = ISuperToken(address(token));
-        _amount = amount;
-        _endPaymentDate = endPaymentDate;
-        _uri = uri;
+        // TODO: minimumFLowRate is fixed the rate at price paid in 1 month. 
+        // Ideally, we should use endPaymentDate to adjust this.
+        _itemData = Data(
+            title,
+            description,
+            price,
+            ISuperToken(address(token)),
+            amount,
+            endPaymentDate, 
+            uri,
+            int96(int(price)) / (3600 * 24 * 30) //minimumFlowRate
+        );
 
         for (uint256 id=1; id<=amount; id++) {
             _mint(address(this), id, 1, "");
@@ -134,10 +143,7 @@ contract Item is Context, ERC1155PresetMinterPauser, Simple777Recipient, SuperAp
 
         (_sfHost,_sfCfa,,) = _main.superfluidConfig();
 
-        // TODO: This fixed the rate at price paid in 1 month. Ideally, we should use endPaymentDate to adjust this.
-        _MINIMUM_FLOW_RATE = int96(int(price)) / (3600 * 24 * 30);
-
-        emit ItemCreated(address(this), _owner, _title, _description, _price, address(_acceptedToken), _amount, _endPaymentDate, _uri);
+        emit ItemCreated(address(this), _owner, _itemData.title, _itemData.description, _itemData.price, address(_itemData.acceptedToken), _itemData.amount, _itemData.endPaymentDate, _itemData.uri);
     }
 
     // -----------------------------------------
@@ -158,7 +164,7 @@ contract Item is Context, ERC1155PresetMinterPauser, Simple777Recipient, SuperAp
             string memory
         )
     {
-        return(_owner, _title, _description, _price, address(_acceptedToken), _amount, _endPaymentDate, _uri);
+        return(_owner, _itemData.title, _itemData.description, _itemData.price, address(_itemData.acceptedToken), _itemData.amount, _itemData.endPaymentDate, _itemData.uri);
     }
 
     function update(
@@ -168,12 +174,10 @@ contract Item is Context, ERC1155PresetMinterPauser, Simple777Recipient, SuperAp
         external
         onlyOwner
     {
-        _title = title;
-        _description = description;
+        _itemData.title = title;
+        _itemData.description = description;
 
-        _setURI(_uri);
-
-        emit ItemUpdated(_owner, title, description);
+        emit ItemUpdated(_owner, _itemData.title, _itemData.description);
     }
 
     function claim(address userAddress) 
@@ -187,7 +191,7 @@ contract Item is Context, ERC1155PresetMinterPauser, Simple777Recipient, SuperAp
             _sfCfa,
             abi.encodeWithSelector(
                 _sfCfa.deleteFlow.selector,
-                _acceptedToken,
+                _itemData.acceptedToken,
                 userAddress,
                 address(this),
                 new bytes(0) // placeholder
@@ -200,7 +204,7 @@ contract Item is Context, ERC1155PresetMinterPauser, Simple777Recipient, SuperAp
 
     function _hasPaidEnough(address userAddress) internal view returns (bool){
         require(_buyingUsersSet.contains(userAddress), "Item: Not buying user");
-        return (totalPaid(userAddress) >= _price);
+        return (totalPaid(userAddress) >= _itemData.price);
     }
 
     function totalPaid(address user)
@@ -208,6 +212,11 @@ contract Item is Context, ERC1155PresetMinterPauser, Simple777Recipient, SuperAp
     {
         bytes32 agreementId = _buyingUsers[user];
         return (block.timestamp-_agreementsUsers[agreementId].timestamp) * uint256(int(_agreementsUsers[agreementId].flowRate));
+    }
+
+    function withdrawEth(address payable _to) external onlyOwner {
+        _to.transfer(address(this).balance);
+        emit WithdrawnEth(_to, address(this).balance);
     }
 
     // -----------------------------------------
@@ -240,11 +249,11 @@ contract Item is Context, ERC1155PresetMinterPauser, Simple777Recipient, SuperAp
         _availableNftIds.remove(id);
         _reservedNftIds.add(id);
 
-        (uint256 timestamp, int96 flowRate,,) = IConstantFlowAgreementV1(agreementClass).getFlowByID(_acceptedToken, agreementId);
+        (uint256 timestamp, int96 flowRate,,) = IConstantFlowAgreementV1(agreementClass).getFlowByID(_itemData.acceptedToken, agreementId);
 
         _agreementsUsers[agreementId] = AgreementData(context.msgSender, flowRate, timestamp);
 
-        uint256 endPaymentDate = timestamp+(_price/uint256(int(flowRate)));
+        uint256 endPaymentDate = timestamp+(_itemData.price/uint256(int(flowRate)));
         emit StartedPurchasing(context.msgSender, agreementId, flowRate, endPaymentDate);
         
         return ctx;
@@ -298,8 +307,8 @@ contract Item is Context, ERC1155PresetMinterPauser, Simple777Recipient, SuperAp
         bytes calldata cbdata,
         bytes calldata ctx
     ) external override onlyHost returns (bytes memory newCtx) {
-        (,int96 flowRate,,) = IConstantFlowAgreementV1(agreementClass).getFlowByID(_acceptedToken, agreementId);
-        require(flowRate >= _MINIMUM_FLOW_RATE, "Item: Flow rate too low");
+        (,int96 flowRate,,) = IConstantFlowAgreementV1(agreementClass).getFlowByID(_itemData.acceptedToken, agreementId);
+        require(flowRate >= _itemData.miminumFlowRate, "Item: Flow rate too low");
         return _startPurchase(ctx, agreementClass, agreementId, cbdata);
     }
 
@@ -337,7 +346,7 @@ contract Item is Context, ERC1155PresetMinterPauser, Simple777Recipient, SuperAp
     // -----------------------------------------
 
     function _isSameToken(ISuperToken superToken) private view returns (bool) {
-        return address(superToken) == address(_acceptedToken);
+        return address(superToken) == address(_itemData.acceptedToken);
     }
 
     function _isCFAv1(address agreementClass) private view returns (bool) {
@@ -350,7 +359,7 @@ contract Item is Context, ERC1155PresetMinterPauser, Simple777Recipient, SuperAp
         public
         view
         virtual
-        override(ERC1155PresetMinterPauser)
+        override(ERC1155)
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
