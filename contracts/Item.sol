@@ -253,6 +253,11 @@ contract Item is Context, ERC1155PresetMinterPauser, Simple777Recipient, SuperAp
     function _finishPurchase(bytes32 agreementId) private {
         address userAddress = _agreementsUsers[agreementId].userAddress;
 
+        if(!_hasPaidEnough(userAddress)){
+            uint256 id = _reservedNftIds.at(0);
+            _reservedNftIds.remove(id);
+            _availableNftIds.add(id);
+        }
         require(_hasPaidEnough(userAddress), "Item: Not enough paid");
 
         _buyingUsersSet.remove(userAddress);
@@ -261,14 +266,14 @@ contract Item is Context, ERC1155PresetMinterPauser, Simple777Recipient, SuperAp
         _agreementsUsers[agreementId] = AgreementData(address(0), 0, 0);
 
         // Send the NFT
-        uint256 id = _reservedNftIds.at(0);
-        _reservedNftIds.remove(id);
+        uint256 nftId = _reservedNftIds.at(0);
+        _reservedNftIds.remove(nftId);
 
-        _safeTransferFrom(address(this), userAddress, id, 1, "");
+        _safeTransferFrom(address(this), userAddress, nftId, 1, "");
 
         // TODO: Pay back the sent-price? Dangerous, relying on block.timestamp
 
-        emit FinishedPurchasing(userAddress, id);
+        emit FinishedPurchasing(userAddress, nftId);
     }
 
     // -----------------------------------------
