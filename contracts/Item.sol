@@ -48,7 +48,9 @@ contract Item is Context, ERC1155PresetMinterPauser, Simple777Recipient, SuperAp
 
     event StartedPurchasing(
         address buyer,
-        int96 flowRate
+        bytes32 agreementId,
+        int96 flowRate,
+        uint256 endPaymentDate
     );
 
     event FinishedPurchasing(
@@ -85,7 +87,8 @@ contract Item is Context, ERC1155PresetMinterPauser, Simple777Recipient, SuperAp
     EnumerableSet.Bytes32Set private _agreementsSet; 
     
     mapping (bytes32 => AgreementData) private _agreementsUsers; // agreementId => timestamp
-    EnumerableSet.UintSet private _availableNftIds; 
+    EnumerableSet.UintSet private _availableNftIds;
+    EnumerableSet.UintSet private _reservedNftIds;
 
     // -----------------------------------------
     // Constructor
@@ -177,7 +180,7 @@ contract Item is Context, ERC1155PresetMinterPauser, Simple777Recipient, SuperAp
         public
     {
         require(_hasPaidEnough(userAddress), "Item: Not paid enough");
-        require(_availableNftIds.length() > 0, "Item: No items available");
+        require(_reservedNftIds.length() > 0, "Item: No items available");
 
         // Close the CFA
         _sfHost.callAgreement(
@@ -226,16 +229,24 @@ contract Item is Context, ERC1155PresetMinterPauser, Simple777Recipient, SuperAp
         bytes32 agreementId,
         bytes calldata /*cbdata*/
     ) private returns (bytes memory newCtx) {
+        require(_availableNftIds.length() > 0, "Item: No Items available");
+
         ISuperfluid.Context memory context = _sfHost.decodeCtx(ctx); // userData
         _buyingUsersSet.add(context.msgSender);
         _buyingUsers[context.msgSender] = agreementId;
         _agreementsSet.add(agreementId);
 
+        uint256 id = _availableNftIds.at(0);
+        _availableNftIds.remove(id);
+        _reservedNftIds.add(id);
+
         (uint256 timestamp, int96 flowRate,,) = IConstantFlowAgreementV1(agreementClass).getFlowByID(_acceptedToken, agreementId);
 
         _agreementsUsers[agreementId] = AgreementData(context.msgSender, flowRate, timestamp);
-        emit StartedPurchasing(context.msgSender, flowRate);
 
+        uint256 endPaymentDate = timestamp+(_price/uint256(int(flowRate)));
+        emit StartedPurchasing(context.msgSender, agreementId, flowRate, endPaymentDate);
+        
         return ctx;
     }
 
@@ -250,8 +261,8 @@ contract Item is Context, ERC1155PresetMinterPauser, Simple777Recipient, SuperAp
         _agreementsUsers[agreementId] = AgreementData(address(0), 0, 0);
 
         // Send the NFT
-        uint256 id = _availableNftIds.at(0);
-        _availableNftIds.remove(id);
+        uint256 id = _reservedNftIds.at(0);
+        _reservedNftIds.remove(id);
 
         _safeTransferFrom(address(this), userAddress, id, 1, "");
 
