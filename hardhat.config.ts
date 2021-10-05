@@ -55,8 +55,12 @@ module.exports = {
       allowUnlimitedContractSize: true,
       accounts: accounts,
     },
+    kovan: {
+      url: 'https://eth-kovan.alchemyapi.io/v2/' + process.env.ALCHEMY_TOKEN,
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : "remote",
+    },
     mumbai: {
-      url: 'https://polygon-mumbai.g.alchemy.com/v2/' + process.env.ALCHEMY_TOKEN,
+      url: 'https://polygon-mumbai.g.alchemy.com/v2/' + process.env.ALCHEMY_TOKEN_POLYGON,
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : "remote",
     },
   },

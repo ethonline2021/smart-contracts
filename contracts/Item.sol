@@ -15,12 +15,14 @@ import {
     ISuperApp
 } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 
+import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
+
 import "./Main.sol";
 import "./utils/Simple777Recipient.sol";
 
 import "hardhat/console.sol";
 
-contract Item is Context, ERC1155, Simple777Recipient, SuperAppBase {
+contract Item is Context, ERC1155, Simple777Recipient, SuperAppBase, KeeperCompatibleInterface {
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using EnumerableSet for EnumerableSet.UintSet;
@@ -348,6 +350,19 @@ contract Item is Context, ERC1155, Simple777Recipient, SuperAppBase {
 
         return ctx;
     }
+
+    // -----------------------------------------
+    // Chainlink Keeper
+    // -----------------------------------------
+    function checkUpkeep(bytes calldata /* checkData */) external override returns (bool upkeepNeeded, bytes memory /* performData */) {
+        upkeepNeeded = (_itemData.endPaymentDate < block.timestamp) && _buyingUsersSet.length() > 0;
+    }
+
+    function performUpkeep(bytes calldata /* performData */) external override {
+        for (uint256 i = 0; i < 50; i++) { // Processing "only" 50 buyers
+            claim(_buyingUsersSet.at(i));
+        }
+    }   
 
     // -----------------------------------------
     // Other
