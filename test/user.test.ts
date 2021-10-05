@@ -57,7 +57,7 @@ describe('User', function () {
     const token: Address = "0x5D8B4C2554aeB7e86F387B4d6c00Ac33499Ed01f"; // Hardcoding DAIX supertoken...
     const amount: number = 100;
     const today = new Date();
-    const endPaymentDate = new Date(today.getFullYear(), today.getMonth()+3, today.getDate()).getDate();
+    const endPaymentDate = Math.floor(today.setDate(today.getDate() + 30)/1000);
     const uri: string = 'https://game.example/api/item/{id}.json';
 
     const itemAddress: Address = await createItem(userContract, title, description, price, token, amount, endPaymentDate, uri);
