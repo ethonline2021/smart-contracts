@@ -18,6 +18,8 @@ import {
 import "./Main.sol";
 import "./utils/Simple777Recipient.sol";
 
+import "hardhat/console.sol";
+
 contract Item is Context, ERC1155, Simple777Recipient, SuperAppBase {
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.Bytes32Set;
@@ -115,7 +117,7 @@ contract Item is Context, ERC1155, Simple777Recipient, SuperAppBase {
         require(price > 0, "Item: Price must be > 0");
         require(address(token) != address(0), "Item: Token Address can't be 0x");
         require(amount > 0, "Item: Amount must be > 0");
-        require(endPaymentDate > 0, "Item: EndPaymentDate must be > 0");
+        require(endPaymentDate > block.timestamp, "Item: EndPaymentDate must be in the future");
 
         _main = Main(main);
         _owner = owner;
@@ -123,8 +125,6 @@ contract Item is Context, ERC1155, Simple777Recipient, SuperAppBase {
         ERC20WithTokenInfo acceptedToken = ERC20WithTokenInfo(address(token));
         require(_main.isSuperToken(acceptedToken),"Item: SuperToken required");
 
-        // TODO: minimumFLowRate is fixed the rate at price paid in 1 month. 
-        // Ideally, we should use endPaymentDate to adjust this.
         _itemData = Data(
             title,
             description,
@@ -133,7 +133,7 @@ contract Item is Context, ERC1155, Simple777Recipient, SuperAppBase {
             amount,
             endPaymentDate, 
             uri,
-            int96(int(price)) / (3600 * 24 * 30) //minimumFlowRate
+            int96(int(price / (endPaymentDate - block.timestamp)))
         );
 
         for (uint256 id=1; id<=amount; id++) {
@@ -161,10 +161,11 @@ contract Item is Context, ERC1155, Simple777Recipient, SuperAppBase {
             address, 
             uint256, 
             uint256,
-            string memory
+            string memory,
+            int96
         )
     {
-        return(_owner, _itemData.title, _itemData.description, _itemData.price, address(_itemData.acceptedToken), _itemData.amount, _itemData.endPaymentDate, _itemData.uri);
+        return(_owner, _itemData.title, _itemData.description, _itemData.price, address(_itemData.acceptedToken), _itemData.amount, _itemData.endPaymentDate, _itemData.uri, _itemData.miminumFlowRate);
     }
 
     function update(
@@ -212,6 +213,12 @@ contract Item is Context, ERC1155, Simple777Recipient, SuperAppBase {
     {
         bytes32 agreementId = _buyingUsers[user];
         return (block.timestamp-_agreementsUsers[agreementId].timestamp) * uint256(int(_agreementsUsers[agreementId].flowRate));
+    }
+
+    function availableAmount()
+        public view returns (uint256)
+    {
+        return _availableNftIds.length();
     }
 
     function withdrawEth(address payable _to) external onlyOwner {
@@ -308,6 +315,7 @@ contract Item is Context, ERC1155, Simple777Recipient, SuperAppBase {
         bytes calldata ctx
     ) external override onlyHost returns (bytes memory newCtx) {
         (,int96 flowRate,,) = IConstantFlowAgreementV1(agreementClass).getFlowByID(_itemData.acceptedToken, agreementId);
+
         require(flowRate >= _itemData.miminumFlowRate, "Item: Flow rate too low");
         return _startPurchase(ctx, agreementClass, agreementId, cbdata);
     }

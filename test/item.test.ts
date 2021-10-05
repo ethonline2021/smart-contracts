@@ -1,9 +1,9 @@
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
 import { expect } from 'chai';
 import { Contract } from "@ethersproject/contracts";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Address } from "hardhat-deploy/dist/types";
-import { userSignup, deployMain, createItem, deployErc20, timeTravel, deployItemFactory } from "./common";
+import { userSignup, deployMain, createItem, timeTravel, deployItemFactory } from "./common";
 import { BigNumber } from "ethers";
 
 const SuperfluidSDK = require("@superfluid-finance/js-sdk");
@@ -16,8 +16,7 @@ let owner: SignerWithAddress,
     bob: SignerWithAddress,
     addrs: SignerWithAddress[];
 
-let erc20Contract: Contract,
-    itemContract: Contract,
+let itemContract: Contract,
     itemFactory: Contract;
 
 // SuperFluid config
@@ -28,6 +27,8 @@ const sfVersion: string = process.env.SUPERFLUID_VERSION || '';
 let sf: any;
 let daiContract: Contract,
     daixContract: Contract;
+
+let evmSnapshotId: any;
 
 describe('Item', function () {
   before(async function () {
@@ -73,17 +74,23 @@ describe('Item', function () {
   beforeEach(async function () {
     itemFactory = await deployItemFactory();
     main = await deployMain(itemFactory.address, sfHost, sfCfa, sfResolver, sfVersion);
-    erc20Contract = await deployErc20('DummyErc20', 'DUM', ethers.utils.parseEther("10000"));
 
     const userAddress: Address = await userSignup(main, 'Mr.X', 'Lorem ipsum dolor sit amet');
     userContract = await ethers.getContractAt("User", userAddress);
 
     const today = new Date();
-    const endPaymentDate = new Date(today.getFullYear(), today.getMonth()+3, today.getDate()).getDate();
+    const endPaymentDate = Math.floor(today.setDate(today.getDate() + 30)/1000);
     const itemAddress = await createItem(userContract, 'Thy Title', 'Desc', ethers.utils.parseEther("42"), daixContract.address, 10, endPaymentDate, 'https://a.com/api/{id}.json');
     itemContract = await ethers.getContractAt("Item", itemAddress);
+
+    evmSnapshotId = await network.provider.send("evm_snapshot");
   });
  
+  afterEach(async function () {
+    // This is going back in time because tests travel forward
+    await network.provider.send("evm_revert", [evmSnapshotId]);
+  });
+
   it('Should be able to update and retrieve the details', async function () {
     const title: string = 'Ethereum after The Merge';
     const description: string = 'While Layer 2 is taking off on Ethereum, topics like cross-chain transactions and fast withdrawals are top of mind. At the same time, Ethereum is planning for its largest release to date with the merge with the beacon chain.';
@@ -113,10 +120,20 @@ describe('Item', function () {
   it('Should be able to start buying items', async function () {
     let itemDetails = await itemContract.getDetails();
     const price = itemDetails[3];
-    const minFlowRate = price.div(3600 * 24 * 30);
+    const minFlowRate = itemDetails[8];
 
     // Creates SF user and starts a flow
     const userOwner = sf.user({ address: owner.address, token: daixContract.address });
+
+    // Too low flowrate
+    let error: any;
+    try{
+      await userOwner.flow({ recipient: itemContract.address, flowRate: (price.div(3600 * 24 * 60)).toString()});
+    }catch(e){
+      error = e;
+    }
+    expect(error).to.be.equal("Error: @superfluid-finance/js-sdk user.flow() : VM Exception while processing transaction: reverted with reason string 'Item: Flow rate too low'");
+
     await userOwner.flow({ recipient: itemContract.address, flowRate: minFlowRate.toString()});
     let flow = await sf.agreements.cfa.getFlow(daixContract.address, owner.address, itemContract.address);
     expect(flow.flowRate).to.be.equal(minFlowRate);
@@ -125,10 +142,9 @@ describe('Item', function () {
 
     await expect(itemContract.claim(owner.address)).to.be.revertedWith("Item: Not paid enough");
 
-    await timeTravel(3600*24*29); // 29 DAYS LATER ... 🐙
+    await timeTravel((3600*24*29)+3600); // 30 DAYS and 1 hour LATER ... 🐙
 
     // Updating the flow is forbidden
-    let error: any;
     try{
       await userOwner.flow({ recipient: itemContract.address, flowRate: minFlowRate.div(10).toString() });
     }catch(e){
@@ -137,13 +153,14 @@ describe('Item', function () {
     expect(error).to.be.equal("Error: @superfluid-finance/js-sdk user.flow() : VM Exception while processing transaction: reverted with reason string 'Unsupported callback - Before Agreement updated'");
 
     // Should be paid (aprox.) after one month
-    expect(await daixContract.balanceOf(itemContract.address)).to.be.closeTo(price, +ethers.utils.parseEther("0.0001").toString());
+    expect(await itemContract.totalPaid(owner.address)).to.be.closeTo(price, Number(ethers.utils.parseEther("0.001")));
+    expect(await daixContract.balanceOf(itemContract.address)).to.be.closeTo(price, Number(ethers.utils.parseEther("0.001").toString()));
   });
 
   it('Should be able to claim items bought', async function () {
     let itemDetails = await itemContract.getDetails();
     const price = itemDetails[3];
-    const minFlowRate = price.div(3600 * 24 * 30);
+    const minFlowRate = itemDetails[8];
 
     // Creates SF user and starts a flow
     const userOwner = sf.user({ address: owner.address, token: daixContract.address });
@@ -151,10 +168,10 @@ describe('Item', function () {
     let flow = await sf.agreements.cfa.getFlow(daixContract.address, owner.address, itemContract.address);
     expect(flow.flowRate).to.be.equal(minFlowRate);
 
-    await timeTravel(3600*24*30); // ONE MONTH LATER ... 🐙
+    await timeTravel(3600*24*30+3700); // ONE MONTH LATER ... 🐙
 
     // Should be paid (aprox.) after one month
-    expect(await daixContract.balanceOf(itemContract.address)).to.be.closeTo(price, +ethers.utils.parseEther("0.0001").toString());
+    expect(await daixContract.balanceOf(itemContract.address)).to.be.closeTo(price, +ethers.utils.parseEther("0.001").toString());
     
     let tx = await itemContract.claim(owner.address);
     let receipt = await tx.wait();

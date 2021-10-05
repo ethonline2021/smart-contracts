@@ -29,7 +29,8 @@ contract User is Context {
         address token,
         uint256 amount,
         uint256 endPaymentDate,
-        string uri
+        string uri,
+        int96 minFlowrate
     );
 
     // -----------------------------------------
@@ -86,8 +87,8 @@ contract User is Context {
         Item item = Item(_main.deployItem(_owner, title, description, price, token, amount, endPaymentDate, uri));
         _deployedItems.add(address(item));
 
-        (,string memory _title, string memory _itemDescription, uint256 _price, address _acceptedToken, uint256 _amount, uint256 _endPaymentDate, string memory _uri) = item.getDetails();
-        emit ItemDeployed(address(item), address(_owner), _title, _itemDescription, _price, _acceptedToken, _amount, _endPaymentDate, _uri);
+        (,string memory _title, string memory _itemDescription, uint256 _price, address _acceptedToken, uint256 _amount, uint256 _endPaymentDate, string memory _uri, int96 _minFlowrate) = item.getDetails();
+        emit ItemDeployed(address(item), address(_owner), _title, _itemDescription, _price, _acceptedToken, _amount, _endPaymentDate, _uri, _minFlowrate);
     }
 
     // -----------------------------------------
