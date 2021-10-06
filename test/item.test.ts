@@ -117,97 +117,118 @@ describe('Item', function () {
   //   expect(await itemContract.balanceOf(itemContract.address,11)).to.be.equal(0);
   // });
 
-  it('Should be able to start buying items', async function () {
-    let itemDetails = await itemContract.getDetails();   
-    const price = itemDetails[3];
+  // it('Should be able to start buying items', async function () {
+  //   let itemDetails = await itemContract.getDetails();   
+  //   const price = itemDetails[3];
+
+  //   // Creates SF user and starts a flow
+  //   const userOwner = sf.user({ address: owner.address, token: daixContract.address });
+
+  //   const requiredFlowRate = await itemContract.requiredFlowRate();
+
+  //   // Too low flowrate
+  //   let error: any;
+  //   try{
+  //     await userOwner.flow({ recipient: itemContract.address, flowRate: (requiredFlowRate.sub(10000)).toString()});
+  //   }catch(e){
+  //     error = e;
+  //   }
+  //   expect(error).to.be.equal("Error: @superfluid-finance/js-sdk user.flow() : VM Exception while processing transaction: reverted with reason string 'Item: Required Flow rate mismatch'");
+
+  //   await userOwner.flow({ recipient: itemContract.address, flowRate: requiredFlowRate.toString()});
+  //   let flow = await sf.agreements.cfa.getFlow(daixContract.address, owner.address, itemContract.address);
+  //   expect(flow.flowRate).to.be.equal(requiredFlowRate);
+
+  //   await timeTravel(3600*24*1); // ONE DAY LATER ... 🐙
+
+  //   await expect(itemContract.claim(owner.address)).to.be.revertedWith("Item: Not paid enough");
+
+  //   await timeTravel((3600*24*29)+4700); // 30 DAYS, 1 hour and something LATER ... 🐙
+
+  //   // Updating the flow is forbidden
+  //   try{
+  //     await userOwner.flow({ recipient: itemContract.address, flowRate: requiredFlowRate.div(10).toString() });
+  //   }catch(e){
+  //     error = e;
+  //   }
+  //   expect(error).to.be.equal("Error: @superfluid-finance/js-sdk user.flow() : VM Exception while processing transaction: reverted with reason string 'Unsupported callback - Before Agreement updated'");
+
+  //   // Should be paid (aprox.) after one month
+  //   expect(await itemContract.totalPaid(owner.address)).to.be.above(price)
+  //   expect(await daixContract.balanceOf(itemContract.address)).to.be.above(price);
+  // });
+
+  // it('Should be able to claim items bought', async function () {
+  //   let itemDetails = await itemContract.getDetails();
+  //   const price = itemDetails[3];
+  //   const requiredFlowRate = await itemContract.requiredFlowRate();
+
+  //   // Creates SF user and starts a flow
+  //   const userOwner = sf.user({ address: owner.address, token: daixContract.address });
+  //   await userOwner.flow({ recipient: itemContract.address, flowRate: requiredFlowRate.toString()});
+  //   let flow = await sf.agreements.cfa.getFlow(daixContract.address, owner.address, itemContract.address);
+  //   expect(flow.flowRate).to.be.equal(requiredFlowRate);
+
+  //   await timeTravel(3600*24*30+4700); // ONE MONTH LATER ... 🐙
+
+  //   // Should be paid (aprox.) after one month
+  //   expect(await daixContract.balanceOf(itemContract.address)).to.be.above(price);
+    
+  //   let tx = await itemContract.claim(owner.address);
+  //   let receipt = await tx.wait();
+  //   receipt = receipt.events?.filter((x: any) => {return x.event == "FinishedPurchasing"})[0];
+  //   expect(receipt.args.buyer).to.be.equal(owner.address);
+
+  //   expect(await itemContract.balanceOf(owner.address, receipt.args.nftId)).to.be.equal(1);
+
+  //   flow = await sf.agreements.cfa.getFlow(daixContract.address, owner.address, itemContract.address);
+  //   expect(flow.timestamp).to.be.equal(BigNumber.from(0));
+  //   expect(flow.flowRate).to.be.equal(BigNumber.from(0));
+  // });
+
+  // it('Should be able to close the flow and receive items bought', async function () {
+  //   let itemDetails = await itemContract.getDetails();
+  //   const price = itemDetails[3];
+  //   const requiredFlowRate = await itemContract.requiredFlowRate();
+
+  //   // Creates SF user and starts a flow
+  //   const userOwner = sf.user({ address: owner.address, token: daixContract.address });
+  //   await userOwner.flow({ recipient: itemContract.address, flowRate: requiredFlowRate.toString()});
+  //   let flow = await sf.agreements.cfa.getFlow(daixContract.address, owner.address, itemContract.address);
+  //   expect(flow.flowRate).to.be.equal(requiredFlowRate);
+
+  //   await timeTravel(3600*24*30+4700); // ONE MONTH LATER ... 🐙
+
+  //   await userOwner.flow({ recipient: itemContract.address, flowRate: "0"});
+  //   flow = await sf.agreements.cfa.getFlow(daixContract.address, owner.address, itemContract.address);
+  //   expect(flow.timestamp).to.be.equal(BigNumber.from(0));
+  //   expect(flow.flowRate).to.be.equal(BigNumber.from(0));
+
+  //   // Should be paid (aprox.) after one month
+  //   expect(await daixContract.balanceOf(itemContract.address)).to.be.above(price);
+
+  //   // ALERT: Nft ID is hardcoded, we have no idea if 1 will be always received
+  //   expect(await itemContract.balanceOf(owner.address, 1)).to.be.equal(1);
+  // });
+
+  it('Should be able to see available Items and not purchasing multiple tickets', async function () {
+    expect(await itemContract.availableAmount()).to.be.equal(BigNumber.from(10));
 
     // Creates SF user and starts a flow
     const userOwner = sf.user({ address: owner.address, token: daixContract.address });
 
-    const requiredFlowRate = await itemContract.requiredFlowRate();
-
-    // Too low flowrate
-    let error: any;
-    try{
-      await userOwner.flow({ recipient: itemContract.address, flowRate: (requiredFlowRate.sub(10000)).toString()});
-    }catch(e){
-      error = e;
-    }
-    expect(error).to.be.equal("Error: @superfluid-finance/js-sdk user.flow() : VM Exception while processing transaction: reverted with reason string 'Item: Required Flow rate mismatch'");
-
+    let requiredFlowRate = await itemContract.requiredFlowRate();
     await userOwner.flow({ recipient: itemContract.address, flowRate: requiredFlowRate.toString()});
-    let flow = await sf.agreements.cfa.getFlow(daixContract.address, owner.address, itemContract.address);
-    expect(flow.flowRate).to.be.equal(requiredFlowRate);
+    expect(await itemContract.availableAmount()).to.be.equal(BigNumber.from(9));
 
-    await timeTravel(3600*24*1); // ONE DAY LATER ... 🐙
-
-    await expect(itemContract.claim(owner.address)).to.be.revertedWith("Item: Not paid enough");
-
-    await timeTravel((3600*24*29)+4700); // 30 DAYS, 1 hour and something LATER ... 🐙
-
-    // Updating the flow is forbidden
+    // Creating a new flow, is like updating the flow
+    let error;
     try{
-      await userOwner.flow({ recipient: itemContract.address, flowRate: requiredFlowRate.div(10).toString() });
+      requiredFlowRate = await itemContract.requiredFlowRate();
+      await userOwner.flow({ recipient: itemContract.address, flowRate: requiredFlowRate.toString()});
     }catch(e){
       error = e;
     }
     expect(error).to.be.equal("Error: @superfluid-finance/js-sdk user.flow() : VM Exception while processing transaction: reverted with reason string 'Unsupported callback - Before Agreement updated'");
-
-    // Should be paid (aprox.) after one month
-    expect(await itemContract.totalPaid(owner.address)).to.be.above(price)
-    expect(await daixContract.balanceOf(itemContract.address)).to.be.above(price);
-  });
-
-  it('Should be able to claim items bought', async function () {
-    let itemDetails = await itemContract.getDetails();
-    const price = itemDetails[3];
-    const requiredFlowRate = await itemContract.requiredFlowRate();
-
-    // Creates SF user and starts a flow
-    const userOwner = sf.user({ address: owner.address, token: daixContract.address });
-    await userOwner.flow({ recipient: itemContract.address, flowRate: requiredFlowRate.toString()});
-    let flow = await sf.agreements.cfa.getFlow(daixContract.address, owner.address, itemContract.address);
-    expect(flow.flowRate).to.be.equal(requiredFlowRate);
-
-    await timeTravel(3600*24*30+4700); // ONE MONTH LATER ... 🐙
-
-    // Should be paid (aprox.) after one month
-    expect(await daixContract.balanceOf(itemContract.address)).to.be.above(price);
-    
-    let tx = await itemContract.claim(owner.address);
-    let receipt = await tx.wait();
-    receipt = receipt.events?.filter((x: any) => {return x.event == "FinishedPurchasing"})[0];
-    expect(receipt.args.buyer).to.be.equal(owner.address);
-
-    expect(await itemContract.balanceOf(owner.address, receipt.args.nftId)).to.be.equal(1);
-
-    flow = await sf.agreements.cfa.getFlow(daixContract.address, owner.address, itemContract.address);
-    expect(flow.timestamp).to.be.equal(BigNumber.from(0));
-    expect(flow.flowRate).to.be.equal(BigNumber.from(0));
-  });
-
-  it('Should be able to close the flow and receive items bought', async function () {
-    let itemDetails = await itemContract.getDetails();
-    const price = itemDetails[3];
-    const requiredFlowRate = await itemContract.requiredFlowRate();
-
-    // Creates SF user and starts a flow
-    const userOwner = sf.user({ address: owner.address, token: daixContract.address });
-    await userOwner.flow({ recipient: itemContract.address, flowRate: requiredFlowRate.toString()});
-    let flow = await sf.agreements.cfa.getFlow(daixContract.address, owner.address, itemContract.address);
-    expect(flow.flowRate).to.be.equal(requiredFlowRate);
-
-    await timeTravel(3600*24*30+4700); // ONE MONTH LATER ... 🐙
-
-    await userOwner.flow({ recipient: itemContract.address, flowRate: "0"});
-    flow = await sf.agreements.cfa.getFlow(daixContract.address, owner.address, itemContract.address);
-    expect(flow.timestamp).to.be.equal(BigNumber.from(0));
-    expect(flow.flowRate).to.be.equal(BigNumber.from(0));
-
-    // Should be paid (aprox.) after one month
-    expect(await daixContract.balanceOf(itemContract.address)).to.be.above(price);
-
-    // ALERT: Nft ID is hardcoded, we have no idea if 1 will be always received
-    expect(await itemContract.balanceOf(owner.address, 1)).to.be.equal(1);
   });
 });
