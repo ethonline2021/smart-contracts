@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
@@ -10,11 +9,13 @@ import { ISuperfluid, ISuperToken, ISuperTokenFactory, SuperAppDefinitions, ISup
 import { IConstantFlowAgreementV1 } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol";
 import { ERC20WithTokenInfo } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/tokens/ERC20WithTokenInfo.sol";
 
+import "./metatx/EIP712MetaTransaction.sol";
+
 import "./User.sol";
 import "./Item.sol";
 import "./ItemFactory.sol";
 
-contract Main is Context, Ownable {
+contract Main is Ownable, EIP712MetaTransaction {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     // -----------------------------------------
@@ -45,7 +46,9 @@ contract Main is Context, Ownable {
     // -----------------------------------------
     // Constructor
     // -----------------------------------------
-    constructor(address itemFactory, address sfHost, address sfCfa, address sfResolver, string memory sfVersion){
+    constructor(address itemFactory, address sfHost, address sfCfa, address sfResolver, string memory sfVersion)
+        EIP712MetaTransaction("Main", "1")
+    {
         require(address(sfHost) != address(0), "Main: Host Address can't be 0x");
         require(address(sfCfa) != address(0), "Main: CFA Address can't be 0x");
         require(address(sfResolver) != address(0), "Main: Resolver Address can't be 0x");
@@ -63,12 +66,12 @@ contract Main is Context, Ownable {
         external
         returns (User)
     {
-        require(deployedUsers[_msgSender()] == address(0), "Main: User already deployed");
+        require(deployedUsers[msgSender()] == address(0), "Main: User already deployed");
 
-        User user = new User(_msgSender(), name, description);
-        deployedUsers[_msgSender()] = address(user);
+        User user = new User(msgSender(), name, description);
+        deployedUsers[msgSender()] = address(user);
         _deployedUsersSet.add(address(user));
-        emit UserDeployed(address(user), _msgSender(), name, description);
+        emit UserDeployed(address(user), msgSender(), name, description);
 
         return (user);
     }
@@ -139,7 +142,7 @@ contract Main is Context, Ownable {
     // -----------------------------------------
 
     modifier onlyDeployedUsers() {
-        require(_deployedUsersSet.contains(_msgSender()), "Main: Forbidden sender");
+        require(_deployedUsersSet.contains(msgSender()), "Main: Forbidden sender");
         _;
     }
 }

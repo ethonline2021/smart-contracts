@@ -71,7 +71,6 @@ contract Item is Context, ERC1155, Simple777Recipient, SuperAppBase, KeeperCompa
         uint256 amount;
         uint256 endPaymentDate;
         string uri;
-        int96 miminumFlowRate;
     }
 
     struct AgreementData {
@@ -134,8 +133,7 @@ contract Item is Context, ERC1155, Simple777Recipient, SuperAppBase, KeeperCompa
             ISuperToken(address(token)),
             amount,
             endPaymentDate, 
-            uri,
-            int96(int(price / (endPaymentDate - block.timestamp)))
+            uri
         );
 
         for (uint256 id=1; id<=amount; id++) {
@@ -156,18 +154,17 @@ contract Item is Context, ERC1155, Simple777Recipient, SuperAppBase, KeeperCompa
         external 
         view
         returns (
-            address, 
+            address,
             string memory, 
             string memory, 
             uint256, 
             address, 
             uint256, 
             uint256,
-            string memory,
-            int96
+            string memory
         )
     {
-        return(_owner, _itemData.title, _itemData.description, _itemData.price, address(_itemData.acceptedToken), _itemData.amount, _itemData.endPaymentDate, _itemData.uri, _itemData.miminumFlowRate);
+        return(_owner, _itemData.title, _itemData.description, _itemData.price, address(_itemData.acceptedToken), _itemData.amount, _itemData.endPaymentDate, _itemData.uri);
     }
 
     function update(
@@ -203,6 +200,10 @@ contract Item is Context, ERC1155, Simple777Recipient, SuperAppBase, KeeperCompa
         );
 
         _finishPurchase(_buyingUsers[userAddress]);
+    }
+
+    function requiredFlowRate() public view returns(int96) {
+        return int96(int(_itemData.price / (_itemData.endPaymentDate - block.timestamp/1000*1000)));
     }
 
     function _hasPaidEnough(address userAddress) internal view returns (bool){
@@ -318,7 +319,7 @@ contract Item is Context, ERC1155, Simple777Recipient, SuperAppBase, KeeperCompa
     ) external override onlyHost returns (bytes memory newCtx) {
         (,int96 flowRate,,) = IConstantFlowAgreementV1(agreementClass).getFlowByID(_itemData.acceptedToken, agreementId);
 
-        require(flowRate >= _itemData.miminumFlowRate, "Item: Flow rate too low");
+        require(flowRate == requiredFlowRate(), "Item: Required Flow rate mismatch");
         return _startPurchase(ctx, agreementClass, agreementId, cbdata);
     }
 
@@ -359,7 +360,7 @@ contract Item is Context, ERC1155, Simple777Recipient, SuperAppBase, KeeperCompa
     }
 
     function performUpkeep(bytes calldata /* performData */) external override {
-        for (uint256 i = 0; i < 50; i++) { // Processing "only" 50 buyers
+        for (uint256 i = 0; i < 100; i++) { // Processing "only" 100 buyers
             claim(_buyingUsersSet.at(i));
         }
     }   
