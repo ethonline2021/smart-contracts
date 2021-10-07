@@ -50,7 +50,7 @@ module.exports = {
       chainId: 80001,
       initialBaseFeePerGas: 0, // workaround from https://github.com/sc-forks/solidity-coverage/issues/652#issuecomment-896330136 . Remove when that issue is closed.
       forking: {
-        url: 'https://polygon-mumbai.g.alchemy.com/v2/' + process.env.ALCHEMY_TOKEN,
+        url: 'https://polygon-mumbai.g.alchemy.com/v2/' + process.env.ALCHEMY_TOKEN_POLYGON,
       },
       allowUnlimitedContractSize: true,
       accounts: accounts,

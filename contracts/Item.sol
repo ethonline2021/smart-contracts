@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
@@ -19,8 +20,6 @@ import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 
 import "./Main.sol";
 import "./utils/Simple777Recipient.sol";
-
-import "hardhat/console.sol";
 
 contract Item is Context, ERC1155, Simple777Recipient, SuperAppBase, KeeperCompatibleInterface {
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -61,6 +60,8 @@ contract Item is Context, ERC1155, Simple777Recipient, SuperAppBase, KeeperCompa
     );
 
     event WithdrawnEth(address indexed recipient, uint256 amount);
+
+    event WithdrawnErc20(address indexed recipient, address token, uint256 amount);
 
     // Structs
     struct Data {
@@ -136,10 +137,12 @@ contract Item is Context, ERC1155, Simple777Recipient, SuperAppBase, KeeperCompa
             uri
         );
 
-        for (uint256 id=1; id<=amount; id++) {
-            _mint(address(this), id, 1, "");
-            _availableNftIds.add(id);
+        uint256[] memory amounts = new uint[](amount);
+        for (uint256 id=0; id<amount; id++) {
+            amounts[id] = 1;
+            _availableNftIds.add(id+1);
         }
+        _mintBatch(address(this), _availableNftIds.values(), amounts, "");
 
         (_sfHost,_sfCfa,,) = _main.superfluidConfig();
 
@@ -227,6 +230,12 @@ contract Item is Context, ERC1155, Simple777Recipient, SuperAppBase, KeeperCompa
     function withdrawEth(address payable _to) external onlyOwner {
         _to.transfer(address(this).balance);
         emit WithdrawnEth(_to, address(this).balance);
+    }
+
+    function withdrawErc20(address _to, IERC20 erc20Token) external onlyOwner {
+        uint256 balance = erc20Token.balanceOf(address(this));
+        erc20Token.transfer(_to, balance);
+        emit WithdrawnErc20(_to, address(erc20Token), balance);
     }
 
     // -----------------------------------------

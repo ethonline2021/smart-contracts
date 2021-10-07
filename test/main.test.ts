@@ -2,7 +2,7 @@ import { ethers } from "hardhat";
 import { Contract } from "@ethersproject/contracts";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Address } from "hardhat-deploy/dist/types";
-import { userSignup, deployMain, deployErc20, deployItemFactory } from "./common";
+import { userSignup, deployMain, deployErc20, deployItemFactory, createItem } from "./common";
 import { expect } from "chai";
 import { BigNumber } from "ethers";
 
@@ -66,9 +66,20 @@ describe('Main', function () {
     await expect(main.deployUser(name, description)).to.be.revertedWith("Main: User already deployed");
   });
 
-  it('Should fail deploying an item externally', async function () {
-    await expect(main.deployItem(
-      erc20Contract.address, 'Thy Title', 'Desc', BigNumber.from(42), erc20Contract.address, 666, 1, 'https://a.com/api/{id}.json'
-    )).to.be.revertedWith("Main: Forbidden sender");
+  it('Should be able to deploy a new Item', async function () {
+    const title: string = 'Ethereum after The Merge';
+    const description: string = 'While Layer 2 is taking off on Ethereum, topics like cross-chain transactions and fast withdrawals are top of mind. At the same time, Ethereum is planning for its largest release to date with the merge with the beacon chain.';
+    const price: BigNumber = ethers.utils.parseEther("42");
+    const token: Address = "0x5D8B4C2554aeB7e86F387B4d6c00Ac33499Ed01f"; // Hardcoding DAIX supertoken...
+    const amount: number = 100;
+    const today = new Date();
+    const endPaymentDate = Math.floor(today.setDate(today.getDate() + 30)/1000);
+    const uri: string = 'https://game.example/api/item/{id}.json';
+
+    await expect(main.deployItem(title, description, price, token, amount, endPaymentDate, uri)).to.be.revertedWith("Main: Forbidden sender");
+    
+    await userSignup(main, "Jon Snow", "King in the north");
+    const itemAddress: Address = await createItem(main, title, description, price, token, amount, endPaymentDate, uri);
+    expect(itemAddress).to.be.a.properAddress;
   });
 });

@@ -28,6 +28,18 @@ contract Main is Ownable, EIP712MetaTransaction {
         string description
     );
 
+    event ItemDeployed(
+        address itemAddress,
+        address owner,
+        string title,
+        string description,
+        uint256 price,
+        address token,
+        uint256 amount,
+        uint256 endPaymentDate,
+        string uri
+    );
+
     // -----------------------------------------
     // Storage
     // -----------------------------------------
@@ -71,20 +83,23 @@ contract Main is Ownable, EIP712MetaTransaction {
         User user = new User(msgSender(), name, description);
         deployedUsers[msgSender()] = address(user);
         _deployedUsersSet.add(address(user));
+
         emit UserDeployed(address(user), msgSender(), name, description);
 
         return (user);
     }
 
-    function deployItem(address owner, string memory title, string memory description, uint256 price, address token, uint256 amount, uint256 endPaymentDate, string memory uri)
+    function deployItem(string memory title, string memory description, uint256 price, address token, uint256 amount, uint256 endPaymentDate, string memory uri)
         external
-        onlyDeployedUsers
-        returns (Item)
     {
-        Item item = _itemFactory.deployItem(address(this), owner, title, description, price, token, amount, endPaymentDate, uri);
+        require(deployedUsers[msgSender()] != address(0), "Main: Forbidden sender");
+
+        Item item = _itemFactory.deployItem(address(this), msgSender(), title, description, price, token, amount, endPaymentDate, uri);
+
         _registerSuperApp(address(item));
 
-        return (item);
+        (,string memory _title, string memory _itemDescription, uint256 _price, address _acceptedToken, uint256 _amount, uint256 _endPaymentDate, string memory _uri) = item.getDetails();
+        emit ItemDeployed(address(item), msgSender(), _title, _itemDescription, _price, _acceptedToken, _amount, _endPaymentDate, _uri);
     }
 
     function _registerSuperApp(address superAppAddr) private {

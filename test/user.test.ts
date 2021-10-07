@@ -3,8 +3,7 @@ import { expect } from 'chai';
 import { Contract } from "@ethersproject/contracts";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Address } from "hardhat-deploy/dist/types";
-import { userSignup, deployMain, createItem, deployErc20, deployItemFactory } from "./common";
-import { BigNumber } from "ethers";
+import { userSignup, deployMain, deployErc20, deployItemFactory } from "./common";
 
 let main: Contract;
 let userContract: Contract;
@@ -48,19 +47,5 @@ describe('User', function () {
     expect(userDetails[0]).to.be.equal(owner.address);
     expect(userDetails[1]).to.be.equal(newName);
     expect(userDetails[2]).to.be.equal(newDescription);
-  });
-
-  it('Should be able to deploy a new Item', async function () {
-    const title: string = 'Ethereum after The Merge';
-    const description: string = 'While Layer 2 is taking off on Ethereum, topics like cross-chain transactions and fast withdrawals are top of mind. At the same time, Ethereum is planning for its largest release to date with the merge with the beacon chain.';
-    const price: BigNumber = ethers.utils.parseEther("42");
-    const token: Address = "0x5D8B4C2554aeB7e86F387B4d6c00Ac33499Ed01f"; // Hardcoding DAIX supertoken...
-    const amount: number = 100;
-    const today = new Date();
-    const endPaymentDate = Math.floor(today.setDate(today.getDate() + 30)/1000);
-    const uri: string = 'https://game.example/api/item/{id}.json';
-
-    const itemAddress: Address = await createItem(userContract, title, description, price, token, amount, endPaymentDate, uri);
-    expect(itemAddress).to.be.a.properAddress;
   });
 });
