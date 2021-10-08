@@ -16,12 +16,10 @@ import {
     ISuperApp
 } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 
-import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
-
 import "./Main.sol";
 import "./utils/Simple777Recipient.sol";
 
-contract Item is Context, ERC1155, Simple777Recipient, SuperAppBase, KeeperCompatibleInterface {
+contract Item is Context, ERC1155, Simple777Recipient, SuperAppBase {
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using EnumerableSet for EnumerableSet.UintSet;
@@ -181,6 +179,16 @@ contract Item is Context, ERC1155, Simple777Recipient, SuperAppBase, KeeperCompa
         _itemData.description = description;
 
         emit ItemUpdated(_owner, _itemData.title, _itemData.description);
+    }
+
+    function isClaimable() public view returns (bool){
+        return (_itemData.endPaymentDate < block.timestamp) && _buyingUsersSet.length() > 0;   
+    }
+
+    function claimAll() public {
+        for (uint256 i = 0; i < 100; i++) { // Processing "only" 100 buyers
+            claim(_buyingUsersSet.at(i));
+        }
     }
 
     function claim(address userAddress) 
@@ -360,19 +368,6 @@ contract Item is Context, ERC1155, Simple777Recipient, SuperAppBase, KeeperCompa
 
         return ctx;
     }
-
-    // -----------------------------------------
-    // Chainlink Keeper
-    // -----------------------------------------
-    function checkUpkeep(bytes calldata /* checkData */) external override returns (bool upkeepNeeded, bytes memory /* performData */) {
-        upkeepNeeded = (_itemData.endPaymentDate < block.timestamp) && _buyingUsersSet.length() > 0;
-    }
-
-    function performUpkeep(bytes calldata /* performData */) external override {
-        for (uint256 i = 0; i < 100; i++) { // Processing "only" 100 buyers
-            claim(_buyingUsersSet.at(i));
-        }
-    }   
 
     // -----------------------------------------
     // Other

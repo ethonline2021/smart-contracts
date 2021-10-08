@@ -59,17 +59,22 @@ contract Main is Ownable, EIP712MetaTransaction {
     // -----------------------------------------
     // Constructor
     // -----------------------------------------
-    constructor(address itemFactory, address sfHost, address sfCfa, address sfResolver, string memory sfVersion)
+    constructor(address sfHost, address sfCfa, address sfResolver, string memory sfVersion)
         EIP712MetaTransaction("Main", "1")
     {
-        require(address(sfHost) != address(0), "Main: Host Address can't be 0x");
-        require(address(sfCfa) != address(0), "Main: CFA Address can't be 0x");
-        require(address(sfResolver) != address(0), "Main: Resolver Address can't be 0x");
-        _itemFactory = ItemFactory(itemFactory);
+        require(address(sfHost) != address(0), "Main: Host can't be 0x");
+        require(address(sfCfa) != address(0), "Main: CFA can't be 0x");
+        require(address(sfResolver) != address(0), "Main: Resolver can't be 0x");
+        
         _sfHost = ISuperfluid(sfHost);
         _sfCfa = IConstantFlowAgreementV1(sfCfa);
         _sfResolver = IResolver(sfResolver);
         _sfVersion = sfVersion;
+    }
+
+    function setItemFactory(address itemFactory) external{
+        require(address(itemFactory) != address(0), "Main: itemFactory can't be 0x");
+        _itemFactory = ItemFactory(itemFactory);
     }
 
     // -----------------------------------------
@@ -95,7 +100,7 @@ contract Main is Ownable, EIP712MetaTransaction {
     {
         require(deployedUsers[msgSender()] != address(0), "Main: Forbidden sender");
 
-        Item item = _itemFactory.deployItem(address(this), msgSender(), title, description, price, token, amount, endPaymentDate, uri);
+        Item item = _itemFactory.deployItem(msgSender(), title, description, price, token, amount, endPaymentDate, uri);
 
         _registerSuperApp(address(item));
 

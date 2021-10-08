@@ -27,8 +27,8 @@ const sfCfa = process.env.SUPERFLUID_CFA || '';
 const sfResolver = process.env.SUPERFLUID_RESOLVER || '';
 const sfVersion = process.env.SUPERFLUID_VERSION || '';
 
-deploy('ItemFactory',[],'')
-  .then((itemFactoryAddr) => deploy("Main", [itemFactoryAddr, sfHost, sfCfa, sfResolver, sfVersion], "0xdF83f67321635C8c2Df962C0FB2ab9C8c92dBaB1"))
+deploy("Main", [sfHost, sfCfa, sfResolver, sfVersion], "0xdF83f67321635C8c2Df962C0FB2ab9C8c92dBaB1")
+  .then((mainAddr) => deploy("ItemFactory", [mainAddr], ""))
   .then(() => process.exit(0))
   .catch((error) => {
     console.error(error);

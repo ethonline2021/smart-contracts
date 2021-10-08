@@ -71,8 +71,9 @@ describe('Item', function () {
   });
 
   beforeEach(async function () {
-    itemFactory = await deployItemFactory();
-    main = await deployMain(itemFactory.address, sfHost, sfCfa, sfResolver, sfVersion);
+    main = await deployMain(sfHost, sfCfa, sfResolver, sfVersion);
+    itemFactory = await deployItemFactory(main.address);
+    await main.setItemFactory(itemFactory.address);
 
     await userSignup(main, "Jon Snow", "King in the north");
 

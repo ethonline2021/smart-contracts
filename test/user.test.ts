@@ -25,8 +25,9 @@ const sfVersion: string = process.env.SUPERFLUID_VERSION || '';
 describe('User', function () {
   beforeEach(async function () {
     [owner, alice, bob, ...addrs] = await ethers.getSigners();
-    itemFactory = await deployItemFactory();
-    main = await deployMain(itemFactory.address, sfHost, sfCfa, sfResolver, sfVersion);
+    main = await deployMain(sfHost, sfCfa, sfResolver, sfVersion);
+    itemFactory = await deployItemFactory(main.address);
+    await main.setItemFactory(itemFactory.address);
     erc20Contract = await deployErc20('DummyErc20', 'DUM', ethers.utils.parseEther("10000"));
 
     const userAddress: Address = await userSignup(main, 'Mr.X', 'Lorem ipsum dolor sit amet');
