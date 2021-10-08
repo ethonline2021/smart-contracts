@@ -30,6 +30,7 @@ contract Main is Ownable, EIP712MetaTransaction {
 
     event ItemDeployed(
         address itemAddress,
+        address user,
         address owner,
         string title,
         string description,
@@ -99,7 +100,7 @@ contract Main is Ownable, EIP712MetaTransaction {
         _registerSuperApp(address(item));
 
         (,string memory _title, string memory _itemDescription, uint256 _price, address _acceptedToken, uint256 _amount, uint256 _endPaymentDate, string memory _uri) = item.getDetails();
-        emit ItemDeployed(address(item), msgSender(), _title, _itemDescription, _price, _acceptedToken, _amount, _endPaymentDate, _uri);
+        emit ItemDeployed(address(item), deployedUsers[msgSender()], msgSender(), _title, _itemDescription, _price, _acceptedToken, _amount, _endPaymentDate, _uri);
     }
 
     function _registerSuperApp(address superAppAddr) private {
