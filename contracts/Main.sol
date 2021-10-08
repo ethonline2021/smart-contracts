@@ -72,7 +72,7 @@ contract Main is Ownable, EIP712MetaTransaction {
         _sfVersion = sfVersion;
     }
 
-    function setItemFactory(address itemFactory) external{
+    function setItemFactory(address itemFactory) external onlyOwner {
         require(address(itemFactory) != address(0), "Main: itemFactory can't be 0x");
         _itemFactory = ItemFactory(itemFactory);
     }
