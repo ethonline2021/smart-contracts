@@ -123,13 +123,18 @@ contract Item is Context, ERC1155, Simple777Recipient, SuperAppBase {
         _owner = owner;
 
         ERC20WithTokenInfo acceptedToken = ERC20WithTokenInfo(address(token));
-        require(_main.isSuperToken(acceptedToken),"Item: SuperToken required");
+
+        // Get/Create the super token
+        address acceptedSuperToken = _main.isSuperToken(acceptedToken) ? address(acceptedToken) : _main.getSuperToken(acceptedToken);
+        if (acceptedSuperToken == address(0)) {
+            acceptedSuperToken = address(_main.createSuperToken(acceptedToken));
+        }
 
         _itemData = Data(
             title,
             description,
             price,
-            ISuperToken(address(token)),
+            ISuperToken(address(acceptedSuperToken)),
             amount,
             endPaymentDate, 
             uri
@@ -143,6 +148,9 @@ contract Item is Context, ERC1155, Simple777Recipient, SuperAppBase {
         _mintBatch(address(this), _availableNftIds.values(), amounts, "");
 
         (_sfHost,_sfCfa,,) = _main.superfluidConfig();
+
+        uint256 configWord = SuperAppDefinitions.APP_LEVEL_FINAL;
+        _sfHost.registerApp(configWord);
 
         emit ItemCreated(address(this), _owner, _itemData.title, _itemData.description, _itemData.price, address(_itemData.acceptedToken), _itemData.amount, _itemData.endPaymentDate, _itemData.uri);
     }

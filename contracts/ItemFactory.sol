@@ -33,7 +33,7 @@ contract ItemFactory is KeeperCompatibleInterface {
     // -----------------------------------------
     // Chainlink Keeper
     // -----------------------------------------
-    function checkUpkeep(bytes calldata /* checkData */) external view override returns (bool upkeepNeeded, bytes memory performData) {
+    function checkUpkeep(bytes calldata /* checkData */) external override returns (bool upkeepNeeded, bytes memory performData) {
         address[] memory allItems = _deployedItemsSet.values();
         uint256 claimableCount = 0;
 

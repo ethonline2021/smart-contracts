@@ -11,12 +11,13 @@ async function deploy(contractName: string, constructorArgs: any[], finalOwner: 
   );
   
   const Contract = await ethers.getContractFactory(contractName);
-  const deployed = await Contract.deploy(...constructorArgs);
-  
+  const deployed = await Contract.deploy(...constructorArgs);  
+
   console.log(`${contractName} deployed to:`, deployed.address);
   
   if(finalOwner != '') {
-    await deployed.transferOwnership(finalOwner);
+    let tx = await deployed.transferOwnership(finalOwner);
+    tx.wait();
     console.log("Ownership transfered to:", finalOwner);
   } 
 

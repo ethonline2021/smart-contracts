@@ -102,7 +102,7 @@ contract Main is Ownable, EIP712MetaTransaction {
 
         Item item = _itemFactory.deployItem(msgSender(), title, description, price, token, amount, endPaymentDate, uri);
 
-        _registerSuperApp(address(item));
+        // _registerSuperApp(address(item));
 
         (,string memory _title, string memory _itemDescription, uint256 _price, address _acceptedToken, uint256 _amount, uint256 _endPaymentDate, string memory _uri) = item.getDetails();
         emit ItemDeployed(address(item), deployedUsers[msgSender()], msgSender(), _title, _itemDescription, _price, _acceptedToken, _amount, _endPaymentDate, _uri);
